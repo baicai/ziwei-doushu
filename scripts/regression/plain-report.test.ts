@@ -18,7 +18,7 @@ const report = buildPlainTextReport(chart,2026);
 assert(report.includes('【整体特点】'));
 assert(report.includes('【事业与工作】'));
 assert(report.includes('【感情与相处】'));
-assert(report.includes('不是 AI 分析'));
+assert(report.includes('并非 AI 分析'));
 assert(!report.includes('**【'),'no raw Markdown headings in lay version');
 assert(!report.includes('身宫地支索引'),'no internal calculation index in lay report');
 const unknown=generateChart({...birth,timePrecision:'unknown'});
