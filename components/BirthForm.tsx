@@ -65,7 +65,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
     province: initialData?.province ?? '',
     city: initialData?.city ?? '',
     locationMode: initialData?.locationMode ?? 'china',
-    timeZone: initialData?.timeZone ?? 'Asia/Shanghai',
+    timeZone: initialData?.timeZone ?? (initialData?.locationMode === 'overseas' ? '' : 'Asia/Shanghai'),
     longitude: initialData?.longitude ?? 120,
     gender: initialData?.gender ?? 'male',
   });
@@ -352,7 +352,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
             ] as const).map(option=><button key={option.value} type="button"
               aria-pressed={(form.locationMode || 'china')===option.value}
               onClick={()=>setForm({...form,locationMode:option.value,province:'',city:'',
-                longitude:120,timeZone:option.value==='china'?'Asia/Shanghai':'Asia/Singapore'})}
+                longitude:120,timeZone:option.value==='china'?'Asia/Shanghai':''})}
               className="min-h-11 rounded-lg px-3 text-xs"
               style={{border:'1px solid var(--t-border)',
                 color:(form.locationMode||'china')===option.value ? goldText : labelClr,
