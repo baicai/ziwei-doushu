@@ -210,7 +210,7 @@ export default function ChartPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-5 mt-4 items-start">
         <div className="min-w-0"><ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} /></div>
-        <div className="min-w-0"><InsightPanel chart={chart} selectedPalace={selectedPalace} liunianYear={liunianYear} /></div>
+        <div className="min-w-0"><InsightPanel chart={chart} selectedPalace={selectedPalace} liunianYear={liunianYear} timeView={view} /></div>
       </div>
 
       <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--t-faint)' }}>
