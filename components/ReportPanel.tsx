@@ -5,6 +5,8 @@ import type { ZiweiChart } from '@/lib/ziwei/types';
 import { OFFLINE_TOPICS, offlineTopicAnalysis } from '@/lib/ziwei/offline-interpretation';
 import { selectedTimeReading } from '@/lib/ziwei/time-reading';
 import { buildPlainSections, buildPlainTextReport } from '@/lib/ziwei/plain-language-report';
+import AiSpecificityControl from '@/components/AiSpecificityControl';
+import { specificityLabel } from '@/lib/ai/specificity';
 
 export function buildChartReport(chart: ZiweiChart, year: number): string {
   const lines = [
@@ -84,28 +86,31 @@ function ProfessionalReport({report}:{report:string}) {
   </div>;
 }
 
-export default function ReportPanel({ chart, year }: {chart: ZiweiChart; year: number}) {
+export default function ReportPanel({ chart, year, specificity=0, aiLab=false, onSpecificityChange }: {
+  chart: ZiweiChart; year: number; specificity?: number; aiLab?: boolean;
+  onSpecificityChange?: (value:number)=>void;
+}) {
   const [open,setOpen]=useState(true);
   const [version,setVersion]=useState<'plain'|'evidence'>('plain');
   const [notice,setNotice]=useState('');
-  const [aiAnswer,setAiAnswer]=useState('');
+  const [aiRuns,setAiRuns]=useState<Array<{answer:string;specificity:number}>>([]);
   const [aiBusy,setAiBusy]=useState(false);
   const sections=useMemo(()=>buildPlainSections(chart),[chart]);
   const plainText=useMemo(()=>buildPlainTextReport(chart,year),[chart,year]);
   const evidenceText=useMemo(()=>buildChartReport(chart,year),[chart,year]);
   const visible=version==='plain'?plainText:evidenceText;
 
-  useEffect(()=>{setAiAnswer('');setNotice('');},[chart]);
+  useEffect(()=>{setAiRuns([]);setNotice('');},[chart]);
 
   const requestAi=async()=>{
     if(aiBusy)return;
-    setAiBusy(true);setNotice('');setAiAnswer('');
+    setAiBusy(true);setNotice('');
     try{
       const response=await fetch('/api/interpret',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          birthInfo:chart.birthInfo,topic:'overview',style:'plain',
+          birthInfo:chart.birthInfo,topic:'overview',style:'plain',specificity,
           question:'请面向完全不懂紫微斗数的普通用户，用通俗中文解释这份命盘。重点说明整体特点、性格、工作、关系、金钱管理与生活提醒；明确哪些是传统象征，不用术语堆砌，不编造盘面事实，不做确定性预测。',
         }),
       });
@@ -114,7 +119,7 @@ export default function ReportPanel({ chart, year }: {chart: ZiweiChart; year: n
       if(!response.ok || !parsed || typeof parsed.answer!=='string')throw new Error(
         response.status===429?'当前 AI 体验次数较多，请稍后再试。':
         typeof parsed?.error==='string'?parsed.error:'AI 暂时不可用，请稍后再试。');
-      setAiAnswer(parsed.answer);
+      setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity}].slice(-4));
     }catch(e){setNotice(e instanceof Error?e.message:'AI 暂时不可用');}
     finally{setAiBusy(false);}
   };
@@ -198,18 +203,32 @@ export default function ReportPanel({ chart, year }: {chart: ZiweiChart; year: n
         <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
           由 DeepSeek 根据当前命盘进一步综合解读。点击后会向第三方 AI 服务发送命盘数据，并消耗一次 AI 调用额度。
         </p>
+        {aiLab&&onSpecificityChange&&<AiSpecificityControl value={specificity}
+          onChange={onSpecificityChange}/>}
         <button type="button" onClick={requestAi} disabled={aiBusy}
           className="min-h-11 rounded-lg px-4 text-sm font-medium disabled:opacity-50"
           style={{background:'rgba(212,168,67,0.12)',border:'1px solid rgba(212,168,67,0.4)',color:'var(--t-gold)'}}>
           {aiBusy?'正在生成 AI 解读…':'使用 DeepSeek 生成通俗分析'}
         </button>
-        {aiAnswer&&<article className="mt-3 rounded-xl p-4 space-y-2"
-          style={{background:'var(--t-surface)'}}>
-          <h4 className="text-sm font-semibold" style={{color:'var(--t-gold)'}}>DeepSeek · AI 分析</h4>
-          <p className="text-sm whitespace-pre-wrap leading-7" style={{color:'var(--t-text2)'}}>{aiAnswer}</p>
-          <button type="button" onClick={()=>downloadText(aiAnswer,'紫微研究_AI分析.txt')}
-            className="min-h-11 text-xs underline" style={{color:'var(--t-text2)'}}>保存本次 AI 分析</button>
-        </article>}
+        {aiRuns.length>0&&<div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs" style={{color:'var(--t-text2)'}}>
+              {aiLab?'保留最近 4 次结果，方便对照不同明确度。':'本次 AI 分析结果'}
+            </p>
+            <button type="button" onClick={()=>setAiRuns([])}
+              className="min-h-11 text-xs underline" style={{color:'var(--t-text2)'}}>清空 AI 分析</button>
+          </div>
+          {aiRuns.map((run,i)=><article key={i} className="rounded-xl p-4 space-y-2"
+            style={{background:'var(--t-surface)'}}>
+            <h4 className="text-sm font-semibold" style={{color:'var(--t-gold)'}}>
+              DeepSeek · AI 分析{aiLab?' · '+run.specificity+'/100（'+specificityLabel(run.specificity)+'）':''}
+            </h4>
+            <p className="text-sm whitespace-pre-wrap leading-7" style={{color:'var(--t-text2)'}}>{run.answer}</p>
+            <button type="button"
+              onClick={()=>downloadText(run.answer,'紫微研究_AI分析_'+run.specificity+'.txt')}
+              className="min-h-11 text-xs underline" style={{color:'var(--t-text2)'}}>保存这次 AI 分析</button>
+          </article>)}
+        </div>}
       </div>
       {notice&&<p role="status" className="mt-3 text-xs" style={{color:'var(--t-text2)'}}>{notice}</p>}
       <p className="mt-4 text-xs leading-6" style={{color:'var(--t-faint)'}}>
