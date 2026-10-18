@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ZiweiChart, Palace } from '@/lib/ziwei/types';
 import type { TimeView } from './TimeNav';
 import WealthEvidencePanel from '@/components/WealthEvidencePanel';
+import { selectedTimeReading } from '@/lib/ziwei/time-reading';
 import {
   OFFLINE_TOPICS,
   matchOfflineTopic,
@@ -24,6 +25,7 @@ interface InsightPanelProps {
   selectedPalace?: Palace | null;
   selectedSiHua?: SelectedSiHua | null;
   liunianYear?: number;
+  timeView?: TimeView;
 }
 
 interface Reading {
@@ -60,7 +62,7 @@ function ReadingContent({ content }: { content: string }) {
  * this component instead provides deterministic client-side explanations
  * grounded in actual chart values, with explicit limitations.
  */
-export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liunianYear }: InsightPanelProps) {
+export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liunianYear, timeView = 'mingpan' }: InsightPanelProps) {
   const [activeTopic, setActiveTopic] = useState<OfflineTopic>('overview');
   const [input, setInput] = useState('');
   const [readings, setReadings] = useState<Reading[]>(() => [
@@ -162,6 +164,14 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
       </header>
 
       <div ref={scrollRef} className="flex-1 min-h-[260px] max-h-[680px] overflow-y-auto p-3 space-y-4">
+        {timeView !== 'mingpan' && (() => {
+          const evidence = selectedTimeReading(chart, timeView, liunianYear ?? new Date().getFullYear());
+          return evidence && <section className="rounded-lg p-3" style={{ border: '1px solid var(--t-border)', background: 'var(--t-card)' }}>
+            <h3 className="text-[12px] font-semibold mb-2" style={{ color: 'var(--t-gold)' }}>{evidence.title}</h3>
+            {evidence.details.map((item, i) => <p key={i} className="text-[11px] leading-[1.8]" style={{ color: 'var(--t-text2)' }}>{item}</p>)}
+            {evidence.limitations.map((item, i) => <p key={i} className="text-[10px] mt-1" style={{ color: 'var(--t-faint)' }}>{item}</p>)}
+          </section>;
+        })()}
         {activeTopic === 'wealth' && <WealthEvidencePanel chart={chart} year={liunianYear ?? new Date().getFullYear()} />}
         {readings.map((reading, index) => (
           <article key={index} className="rounded-lg p-3" style={{ border: '1px solid var(--t-border)', background: 'var(--t-card)' }}>
