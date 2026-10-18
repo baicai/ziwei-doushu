@@ -137,7 +137,7 @@ export default function ShareModal({ open, onClose, shareUrl, chart, birth, high
               }}>
                 <div style={{ marginBottom: '4px', fontWeight: 600, color: '#8b6a14' }}>使用提示：</div>
                 · 下载图片可发朋友圈 / 抖音 / 小红书<br />
-                · 复制链接发给微信好友，对方点开看自己的盘起点
+                · 分享链接包含出生日期、时间与地点，可能涉及个人隐私；请征得相关人员同意后分享。
               </div>
             </div>
           </motion.div>
