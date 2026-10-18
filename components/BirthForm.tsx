@@ -344,62 +344,64 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
 
       {/* ── 出生地点 ── */}
       <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', fontSize: '11px', color: labelClr, marginBottom: '6px', letterSpacing: '0.05em' }}>出生地点（用于真太阳时校正）</label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
-          <select
-            value={form.province}
-            onChange={e => handleProvince(e.target.value)}
-            style={inputStyle}
-            onFocus={e => { e.target.style.borderColor = focusBorder; }}
-            onBlur={e => { e.target.style.borderColor = inputBorder; }}
-          >
-            <option value="">省份 / 直辖市</option>
-            {PROVINCES.map(p => (
-              <option key={p.name} value={p.name}>{p.name}</option>
-            ))}
-          </select>
-          <select
-            value={form.city}
-            onChange={e => handleCity(e.target.value)}
-            disabled={!form.province}
-            style={{ ...inputStyle, opacity: form.province ? 1 : 0.45 }}
-            onFocus={e => { e.target.style.borderColor = focusBorder; }}
-            onBlur={e => { e.target.style.borderColor = inputBorder; }}
-          >
-            <option value="">{form.province ? '城市' : '先选省份'}</option>
-            {cityList.map(c => (
-              <option key={c.name} value={c.name}>{c.name}</option>
-            ))}
-          </select>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'8px', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
+          <span style={{ fontSize:'11px',color:labelClr }}>出生地点</span>
+          <div style={{display:'flex',gap:'6px'}} role="group" aria-label="出生地区">
+            {([
+              { value:'china',text:'中国大陆' },{ value:'overseas',text:'海外及港澳台' },
+            ] as const).map(option=><button key={option.value} type="button"
+              aria-pressed={(form.locationMode || 'china')===option.value}
+              onClick={()=>setForm({...form,locationMode:option.value,province:'',city:'',
+                longitude:120,timeZone:option.value==='china'?'Asia/Shanghai':'Asia/Singapore'})}
+              className="min-h-11 rounded-lg px-3 text-xs"
+              style={{border:'1px solid var(--t-border)',
+                color:(form.locationMode||'china')===option.value ? goldText : labelClr,
+                background:(form.locationMode||'china')===option.value ? 'rgba(212,168,67,0.12)' : 'transparent'}}>
+              {option.text}
+            </button>)}
+          </div>
         </div>
-        <AnimatePresence mode="wait">
-          {form.province ? (
-            <motion.p
-              key="location-info"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{ fontSize: '10px', color: isDark ? 'rgba(180,210,235,0.85)' : 'rgba(100,70,10,0.5)', marginTop: '5px' }}
-            >
-              {form.city || '（请选择城市）'} · 经度 {form.longitude.toFixed(1)}°E · 时差 {offsetMin > 0 ? '+' : ''}{offsetMin} 分钟
-            </motion.p>
-          ) : (
-            <motion.p
-              key="location-hint"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{ fontSize: '10px', color: isDark ? 'rgba(165,185,210,0.7)' : 'rgba(140,100,20,0.45)', marginTop: '5px' }}
-            >
-              填写出生地可校正时间；未填写时按北京时间计算
-            </motion.p>
-          )}
-        </AnimatePresence>
+        {form.locationMode !== 'overseas' ? <>
+          <div style={{ display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:'8px' }}>
+            <select value={form.province} onChange={e=>handleProvince(e.target.value)} style={inputStyle}>
+              <option value="">省份 / 直辖市</option>
+              {PROVINCES.map(p=><option key={p.name} value={p.name}>{p.name}</option>)}
+            </select>
+            <select value={form.city} onChange={e=>handleCity(e.target.value)}
+              disabled={!form.province} style={{...inputStyle,opacity:form.province?1:0.45}}>
+              <option value="">{form.province?'城市':'先选省份'}</option>
+              {cityList.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+          <p className="mt-2 text-xs" style={{color:labelClr}}>
+            {form.city ? `${form.city} · 经度 ${form.longitude.toFixed(1)}°E` :
+              '填写出生地可校正时间；未填写时按北京时间计算'}
+          </p>
+        </> : <>
+          <input aria-label="海外出生城市" type="text" placeholder="出生城市或地区，例如：东京"
+            value={form.city} onChange={e=>setForm({...form,city:e.target.value})}
+            style={{...inputStyle,marginBottom:'8px'}} />
+          <label style={{display:'block',fontSize:'11px',color:labelClr,marginBottom:'5px'}}>出生地时区</label>
+          <select aria-label="出生地时区" value={form.timeZone || ''} style={{...inputStyle,marginBottom:'8px'}}
+            onChange={e=>setForm({...form,timeZone:e.target.value})}>
+            <option value="">请选择时区</option>
+            {BIRTH_TIME_ZONES.map(t=><option key={t.value} value={t.value}>{t.label} · {t.value}</option>)}
+          </select>
+          <label style={{display:'block',fontSize:'11px',color:labelClr,marginBottom:'5px'}}>出生地经度（东经正数，西经负数）</label>
+          <input aria-label="出生地经度" type="number" step="0.01" min="-180" max="180"
+            value={Number.isFinite(form.longitude)?form.longitude:''}
+            onChange={e=>setForm({...form,longitude:e.target.value.trim()===''?NaN:Number(e.target.value)})}
+            style={inputStyle} />
+          <p className="mt-2 text-xs leading-6" style={{color:labelClr}}>
+            请填写出生当地钟表时间。经度需按实际出生地填写；夏令时跳时或重复时段需核实出生记录。
+          </p>
+          <FieldError msg={showErr('location')?errors.location:''}/>
+        </>}
       </div>
 
       {/* ── 出生时间 ── */}
       <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', fontSize: '11px', color: labelClr, marginBottom: '6px', letterSpacing: '0.05em' }}>出生时间（北京时间）</label>
+        <label style={{ display: 'block', fontSize: '11px', color: labelClr, marginBottom: '6px', letterSpacing: '0.05em' }}>出生时间（{form.locationMode === 'overseas' ? '当地钟表时间' : '北京时间'}）</label>
         <div style={{ borderRadius: '14px', padding: '12px', background: panelBg, border: `1px solid ${panelBorder}`, opacity: form.unknownTime ? 0.45 : 1, pointerEvents: form.unknownTime ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px', marginBottom: '8px' }}>
             <select
@@ -433,8 +435,9 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
               </span>
             )}
           </div>
+          <FieldError msg={showErr('clock') ? errors.clock : ''}/>
           {solarTime?.dateValid && <p style={{ textAlign: 'center', fontSize: '11px', margin: '6px 0 0', color: labelClr }}>
-            {form.province && form.city ? `当地太阳时间：${formatTrueSolarClock(solarTime)}` : '按北京时间推算'}
+            {form.city ? `当地太阳时间：${formatTrueSolarClock(solarTime)}` : '按北京时间推算'}
             {effectiveDate ? ` · 排盘日期：${effectiveDate.year}年${effectiveDate.month}月${effectiveDate.day}日` : ''}
           </p>}
           {solarTime?.dateValid && form.province && form.city && solarDate && isChinaDST(solarDate.year, solarDate.month, solarDate.day) && (
