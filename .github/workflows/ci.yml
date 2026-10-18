@@ -25,5 +25,12 @@ jobs:
       - name: 类型检查
         run: npm run typecheck
 
-      - name: 排盘引擎回归
+      - name: 排盘引擎和本地缓存回归
         run: npm test
+
+      - name: Next.js 生产构建
+        run: npm run build
+
+      - name: 生产依赖高危安全审计（报告，不阻断演示分支）
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
