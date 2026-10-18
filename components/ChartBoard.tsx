@@ -11,6 +11,8 @@ interface ChartBoardProps {
   onStarSelect?: (star: Star, palace: Palace) => void;
   onPalaceSelect?: (palace: Palace) => void;
   onSiHuaClick?: (starName: string, siHua: string, view: TimeView) => void;
+  selectedBranch?: number | null;
+  onPalaceClear?: () => void;
   timeView: TimeView;
   liunianYear: number;
 }
@@ -54,8 +56,9 @@ function getSanFangSiZheng(branch: number): [number, number, number, number] {
 
 const ANIMATION_ORDER = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 
-export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick, timeView, liunianYear }: ChartBoardProps) {
-  const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
+export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick, selectedBranch, onPalaceClear, timeView, liunianYear }: ChartBoardProps) {
+  const [internalBranch, setInternalBranch] = useState<number | null>(null);
+  const activeBranch = selectedBranch === undefined ? internalBranch : selectedBranch;
 
   const palaceMap: Record<number, Palace> = {};
   chart.palaces.forEach(p => { palaceMap[p.branch] = p; });
@@ -75,16 +78,18 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
   const overlayLabel = timeView === 'daxian' ? '限' : timeView === 'liunian' ? '年' : undefined;
 
   const handlePalaceClick = (branch: number) => {
-    const isDeselecting = selectedBranch === branch;
-    setSelectedBranch(prev => prev === branch ? null : branch);
-    if (!isDeselecting) {
+    const isDeselecting = activeBranch === branch;
+    if (selectedBranch === undefined) setInternalBranch(isDeselecting ? null : branch);
+    if (isDeselecting) {
+      onPalaceClear?.();
+    } else {
       const palace = palaceMap[branch];
       if (palace) onPalaceSelect?.(palace);
     }
   };
 
   // 三方四正
-  const sanFangBranches = selectedBranch !== null ? getSanFangSiZheng(selectedBranch) : null;
+  const sanFangBranches = activeBranch !== null ? getSanFangSiZheng(activeBranch) : null;
   const sanFangSet = sanFangBranches ? new Set(sanFangBranches) : null;
 
   return (
@@ -125,8 +130,8 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
                 palace={palace}
                 onClick={() => handlePalaceClick(branch)}
                 onStarClick={(star) => onStarSelect?.(star, palace)}
-                isSelected={selectedBranch === branch}
-                isSanFang={!!(sanFangSet?.has(branch) && selectedBranch !== branch)}
+                isSelected={activeBranch === branch}
+                isSanFang={!!(sanFangSet?.has(branch) && activeBranch !== branch)}
                 delay={i * 0.04}
                 overlayStarSiHua={Object.keys(overlayData).length > 0 ? overlayData : undefined}
                 overlayLabel={overlayLabel}
@@ -179,7 +184,7 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
         <AnimatePresence>
           {sanFangBranches !== null && (
             <motion.div
-              key={`sf-${selectedBranch}`}
+              key={`sf-${activeBranch}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
