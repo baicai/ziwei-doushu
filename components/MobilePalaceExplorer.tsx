@@ -41,6 +41,11 @@ export default function MobilePalaceExplorer({
 }: MobilePalaceExplorerProps) {
   const [mode, setMode] = useState<'overview' | 'chart'>('overview');
   const detailRef = useRef<HTMLDivElement>(null);
+  const tabRef = useRef<HTMLDivElement>(null);
+  const switchMode = (next: 'overview' | 'chart') => {
+    setMode(next);
+    requestAnimationFrame(() => tabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
   const ordered = [...chart.palaces].sort((a, b) =>
     PALACE_ORDER.indexOf(a.name) - PALACE_ORDER.indexOf(b.name));
   const current = selectedPalace
@@ -72,15 +77,15 @@ export default function MobilePalaceExplorer({
 
   return (
     <section className="min-w-0" aria-label="手机版十二宫">
-      <div className="grid grid-cols-2 gap-2 mb-3 rounded-xl p-1"
-        style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)' }}>
-        <button type="button" onClick={() => setMode('overview')}
+      <div ref={tabRef} className="sticky z-30 grid grid-cols-2 gap-2 mb-3 rounded-xl p-1"
+        style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)', top: 'var(--ziwei-nav-height,60px)', scrollMarginTop: 'var(--ziwei-nav-height,60px)' }}>
+        <button type="button" onClick={() => switchMode('overview')}
           aria-pressed={mode === 'overview'} className="min-h-11 rounded-lg text-sm font-medium"
           style={{ color: mode === 'overview' ? 'var(--t-gold)' : 'var(--t-text2)',
             background: mode === 'overview' ? 'var(--t-card)' : 'transparent' }}>
           十二宫概览
         </button>
-        <button type="button" onClick={() => setMode('chart')}
+        <button type="button" onClick={() => switchMode('chart')}
           aria-pressed={mode === 'chart'} className="min-h-11 rounded-lg text-sm font-medium"
           style={{ color: mode === 'chart' ? 'var(--t-gold)' : 'var(--t-text2)',
             background: mode === 'chart' ? 'var(--t-card)' : 'transparent' }}>
@@ -124,9 +129,9 @@ export default function MobilePalaceExplorer({
           </div>
 
           {current && (
-            <div ref={detailRef} id="mobile-palace-detail" className="mt-4 rounded-xl p-4 scroll-mt-4"
+            <div ref={detailRef} id="mobile-palace-detail" className="mt-4 rounded-xl p-4"
               aria-live="polite"
-              style={{ background: 'var(--t-card)', border: '1px solid var(--t-border)' }}>
+              style={{ background: 'var(--t-card)', border: '1px solid var(--t-border)', scrollMarginTop: 'calc(var(--ziwei-nav-height,60px) + 64px)' }}>
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div>
                   <h2 className="text-lg font-semibold" style={{ color: 'var(--t-gold)' }}>
