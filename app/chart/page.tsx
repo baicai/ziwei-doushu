@@ -41,10 +41,22 @@ export default function ChartPage() {
   const [notice, setNotice] = useState('');
   const [showingSample, setShowingSample] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [aiLab, setAiLab] = useState(false);
+  const [specificity, setSpecificity] = useState(0);
   const draftRef = useRef<BirthFormState | null>(null);
   const { history, save: saveHistory, remove: removeHistory, clear: clearHistory } = useHistory();
   const navRef = useRef<HTMLDivElement>(null);
   const [navHeight, setNavHeight] = useState(60);
+
+  useEffect(() => {
+    const query=new URLSearchParams(window.location.search);
+    if(query.get('ai_lab')==='1') {
+      setAiLab(true);
+      const provided=Number(query.get('specificity'));
+      if(query.has('specificity') && Number.isInteger(provided) && provided>=0 && provided<=100)
+        setSpecificity(provided);
+    }
+  }, []);
 
   useEffect(() => {
     if (!chart || !navRef.current || typeof ResizeObserver === 'undefined') return;
@@ -311,10 +323,12 @@ export default function ChartPage() {
               timeView={view} liunianYear={liunianYear} />
           </div>
         </div>
-        <div className="min-w-0"><InsightPanel chart={chart} selectedPalace={selectedPalace} liunianYear={liunianYear} timeView={view} /></div>
+        <div className="min-w-0"><InsightPanel chart={chart} selectedPalace={selectedPalace} liunianYear={liunianYear} timeView={view}
+          specificity={specificity} aiLab={aiLab} onSpecificityChange={setSpecificity} /></div>
       </div>
 
-      <ReportPanel chart={chart} year={liunianYear} />
+      <ReportPanel chart={chart} year={liunianYear}
+        specificity={specificity} aiLab={aiLab} onSpecificityChange={setSpecificity} />
       {shareForm && <ShareModal open={shareOpen} onClose={() => setShareOpen(false)}
         shareUrl={shareUrl} chart={chart}
         birth={{year:shareForm.year,month:shareForm.month,day:shareForm.day,
