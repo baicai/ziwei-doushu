@@ -21,6 +21,11 @@ export const metadata: Metadata = {
     locale: 'zh_CN',
     type: 'website',
   },
+  twitter: {
+    card: 'summary',
+    title: '紫微研究 · 紫微斗数命盘',
+    description: '紫微斗数排盘、十二宫解析、大限流年与命盘综合解读。',
+  },
   // 站长平台验证（拿到 verification code 后填入对应字段，重新部署即可）
   verification: {
     // Google Search Console: 在 https://search.google.com/search-console 添加站点后获取
