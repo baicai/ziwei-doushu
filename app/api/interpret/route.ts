@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { reserveAiBudget } from '@/lib/ai/budget';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import { isValidGregorianDate } from '@/lib/ziwei/true-solar-time';
 import type { BirthInfo } from '@/lib/ziwei/types';
@@ -65,6 +66,14 @@ export async function POST(request: NextRequest) {
     const ctrl=new AbortController();
     const timeout=setTimeout(()=>ctrl.abort(),45000);
     let response:Response;
+    const budget = await reserveAiBudget();
+    if (!budget.allowed) {
+      const exceeded = budget.reason === 'daily_limit' || budget.reason === 'monthly_limit';
+      return NextResponse.json({ error: exceeded
+        ? '今天的 AI 体验额度已用完，请稍后再试。'
+        : 'AI 体验暂时不可用，请稍后再试。', code: exceeded ? 'AI_BUDGET_EXCEEDED' : 'AI_BUDGET_UNAVAILABLE' },
+        { status: exceeded ? 429 : 503, headers: { 'Cache-Control': 'no-store' } });
+    }
     const configuredModel=process.env.DEEPSEEK_MODEL;
     const model=configuredModel==='deepseek-v4-pro' ? configuredModel : 'deepseek-flash';
     try {
@@ -81,9 +90,16 @@ export async function POST(request: NextRequest) {
     } finally {clearTimeout(timeout);}
     if(!response.ok) return NextResponse.json({error:response.status===429?'模型调用过于频繁，请稍后重试。':'AI 服务暂时不可用，请检查 API 额度或模型配置。'}, {status:502});
     const data=await response.json();
+    const usage = data?.usage;
+    if (usage && typeof usage.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number') {
+      // Operational numbers only: do not log raw birth data or questions.
+      console.info('iziwei.ai.usage', JSON.stringify({model, inputTokens:usage.prompt_tokens, outputTokens:usage.completion_tokens,
+        budgetMode:budget.mode}));
+    }
     const answer=data?.choices?.[0]?.message?.content;
     if(typeof answer!=='string'||!answer.trim()) return NextResponse.json({error:'模型未返回有效解读'}, {status:502});
-    return NextResponse.json({answer:answer.slice(0,8000),model:data.model||model,topic,source:'deepseek'});
+    return NextResponse.json({answer:answer.slice(0,8000),model:data.model||model,topic,source:'deepseek'},
+      { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({error:'AI 请求失败或超时，离线规则解读仍可正常使用。'}, {status:502});
   }
