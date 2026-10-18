@@ -83,7 +83,7 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
       const missing = e instanceof Error && e.message === 'api-missing';
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: missing ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。' : '解读失败，请检查API配置或稍后重试。',
+        content: missing ? 'AI 解读暂时不可用，请稍后重试。' : '解读失败，请检查API配置或稍后重试。',
       }]);
     } finally {
       setLoading(false);
@@ -95,7 +95,7 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
       {/* 标题 */}
       <div className="px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--t-border)' }}>
         <h3 className="text-xs font-medium tracking-widest" style={{ color: 'var(--t-gold)' }}>AI 命盘解读</h3>
-        <p className="text-[10px] mt-0.5" style={{ color: 'var(--t-faint)' }}>倪海厦正宗紫微斗数 · 智慧解析</p>
+        <p className="text-[10px] mt-0.5" style={{ color: 'var(--t-faint)' }}>紫微斗数 · 命盘解读</p>
       </div>
 
       {/* 消息列表 */}
