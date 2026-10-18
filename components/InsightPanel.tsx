@@ -144,8 +144,13 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({birthInfo:chart.birthInfo,topic:activeTopic,question:input.trim().slice(0,500)}),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'AI 解读失败');
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(
+        response.status === 429 ? '请求较多，请稍后再试。'
+        : data && typeof data.error === 'string' ? data.error
+        : 'AI 解读暂时不可用，请稍后重试。',
+      );
+      if (!data || typeof data.answer !== 'string') throw new Error('AI 暂时未返回有效解读，请稍后重试。');
       setAiAnswer(data.answer);
       setInput('');
     } catch (err) {setAiError(err instanceof Error ? err.message : 'AI 暂时不可用');}
