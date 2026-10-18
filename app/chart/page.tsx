@@ -219,7 +219,7 @@ export default function ChartPage() {
             </button>
           </div>
         )}
-        <BirthForm key={formRevision} initialData={cached?.form ?? undefined}
+        <BirthForm key={formRevision} initialData={cached?.form ?? draftRef.current ?? undefined}
           onFormSave={data => { draftRef.current = data; }}
           onSubmit={submitBirth} />
         {cached && (
