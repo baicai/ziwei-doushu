@@ -218,7 +218,7 @@ export default function ChartPage() {
         </p>
       )}
 
-      <div ref={navRef} id="chart-time-tabs" className="sticky top-0 z-40 xl:static px-1 py-2 -mx-1 rounded-xl" style={{ background: 'var(--t-bg, rgba(12,17,27,0.95))', backdropFilter: 'blur(14px)' }}>
+      <div ref={navRef} id="chart-time-tabs" className="sticky top-0 z-40 xl:static px-1 py-2 -mx-1 rounded-xl" style={{ background: 'var(--t-surface)', backdropFilter: 'blur(14px)' }}>
         <TimeNav chart={chart} view={view} liunianYear={liunianYear}
           onViewChange={v => { setView(v); if (window.innerWidth < 1280) navRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
           onYearChange={setLiunianYear} />
