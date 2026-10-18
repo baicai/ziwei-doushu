@@ -6,10 +6,11 @@ import ChartBoard from '@/components/ChartBoard';
 import MobilePalaceExplorer from '@/components/MobilePalaceExplorer';
 import InsightPanel from '@/components/InsightPanel';
 import ReportPanel from '@/components/ReportPanel';
+import ShareModal from '@/components/ShareModal';
 import UnknownHourChoices from '@/components/UnknownHourChoices';
 import TimeNav, { type TimeView } from '@/components/TimeNav';
 import { generateChart } from '@/lib/ziwei/algorithm';
-import { formToBirthInfo } from '@/lib/ziwei/share';
+import { formToBirthInfo, formToSearchParams, searchParamsToForm } from '@/lib/ziwei/share';
 import { useHistory } from '@/lib/ziwei/history';
 import { LAST_CHART_STORAGE_KEY, buildCachedChart, parseCachedChart, type CachedChartInput } from '@/lib/ziwei/chart-cache';
 import type { BirthInfo, ZiweiChart, Palace } from '@/lib/ziwei/types';
@@ -39,6 +40,7 @@ export default function ChartPage() {
   const [formRevision, setFormRevision] = useState(0);
   const [notice, setNotice] = useState('');
   const [showingSample, setShowingSample] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const draftRef = useRef<BirthFormState | null>(null);
   const { history, save: saveHistory, remove: removeHistory, clear: clearHistory } = useHistory();
   const navRef = useRef<HTMLDivElement>(null);
@@ -55,6 +57,20 @@ export default function ChartPage() {
 
   useEffect(() => {
     try {
+      const incoming = searchParamsToForm(new URLSearchParams(window.location.search));
+      if (incoming) {
+        try {
+          const form:BirthFormState = {name:'',year:'',month:'',day:'',clockHour:'8',clockMinute:'0',
+            unknownTime:false,province:'',city:'',longitude:120,gender:'male',isLunar:false,isLeapMonth:false,
+            locationMode:'china',timeZone:'Asia/Shanghai',...incoming};
+          const birth=formToBirthInfo(form);
+          setChart(generateChart(birth));
+          draftRef.current=form;
+          setShowingSample(false);
+          setNotice('已打开共享命盘。出生资料不会自动保存到本设备。');
+          return;
+        } catch { setNotice('分享链接的出生资料无效，请重新填写。'); }
+      }
       const raw = window.localStorage.getItem(LAST_CHART_STORAGE_KEY);
       const stored = parseCachedChart(raw);
       if (stored) {
@@ -109,6 +125,10 @@ export default function ChartPage() {
       setNotice('排盘失败，请检查出生日期与时辰后重试。');
     }
   };
+
+  const shareForm = !showingSample ? (draftRef.current ?? cached?.form) : null;
+  const shareUrl = shareForm && typeof window !== 'undefined'
+    ? `${window.location.origin}/chart?${formToSearchParams({...shareForm,name:''}).toString()}` : '';
 
   const openHistory = (form: BirthFormState) => {
     try {
@@ -246,6 +266,9 @@ export default function ChartPage() {
             style={{ border: '1px solid var(--t-border)', color: 'var(--t-text)' }}>
             修改出生资料
           </button>
+          {shareForm && <button type="button" onClick={() => setShareOpen(true)}
+            className="rounded-lg min-h-11 px-3 py-2 text-sm"
+            style={{border:'1px solid var(--t-border)',color:'var(--t-gold)'}}>分享命盘</button>}
           <button type="button" onClick={clearCache} className="rounded-lg px-3 py-2 text-sm"
             style={{ border: '1px solid var(--t-border)', color: 'var(--t-text2)' }}>
             清除保存资料
@@ -292,6 +315,11 @@ export default function ChartPage() {
       </div>
 
       <ReportPanel chart={chart} year={liunianYear} />
+      {shareForm && <ShareModal open={shareOpen} onClose={() => setShareOpen(false)}
+        shareUrl={shareUrl} chart={chart}
+        birth={{year:shareForm.year,month:shareForm.month,day:shareForm.day,
+          hour:shareForm.clockHour,minute:shareForm.clockMinute,gender:shareForm.gender,
+          city:shareForm.city}} />}
       <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--t-faint)' }}>
         隐私提示：出生资料保存在当前设备，且未加密。共用设备请及时清除。
       </p>
