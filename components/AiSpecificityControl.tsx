@@ -1,19 +1,21 @@
 'use client';
 
+import { useId } from 'react';
 import { specificityLabel } from '@/lib/ai/specificity';
 
 export default function AiSpecificityControl({value,onChange}:{
   value:number;
   onChange:(next:number)=>void;
 }) {
+  const inputId=useId();
   return <div className="rounded-xl p-3 space-y-2"
     style={{background:'var(--t-surface)',border:'1px solid var(--t-border)'}}>
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <label htmlFor="ai-specificity-range" className="text-xs font-medium"
+      <label htmlFor={inputId} className="text-xs font-medium"
         style={{color:'var(--t-text)'}}>描述明确度 · 测试参数</label>
       <span className="text-xs" style={{color:'var(--t-gold)'}}>{value}/100 · {specificityLabel(value)}</span>
     </div>
-    <input id="ai-specificity-range" type="range" min={0} max={100} step={10}
+    <input id={inputId} type="range" min={0} max={100} step={10}
       value={value} onChange={event=>onChange(Number(event.target.value))}
       className="w-full min-h-11" style={{accentColor:'var(--t-gold)'}}
       aria-valuetext={specificityLabel(value)}/>
