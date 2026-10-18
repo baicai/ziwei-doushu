@@ -65,7 +65,7 @@ function ReadingContent({ content }: { content: string }) {
 export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liunianYear, timeView = 'mingpan' }: InsightPanelProps) {
   const [activeTopic, setActiveTopic] = useState<OfflineTopic>('overview');
   const [input, setInput] = useState('');
-  const [aiAnswer, setAiAnswer] = useState('');
+  const [aiTurns, setAiTurns] = useState<Array<{ question: string; answer: string }>>([]);
   const [aiError, setAiError] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [readings, setReadings] = useState<Reading[]>(() => [
@@ -76,7 +76,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setAiAnswer(''); setAiError('');
+    setAiError(''); setAiTurns([]);
     setActiveTopic('overview');
     setReadings([{ heading: '命格', content: offlineTopicAnalysis(chart, 'overview') }]);
     lastPalace.current = null;
@@ -110,7 +110,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
   }, [readings]);
 
   const showTopic = (topic: OfflineTopic) => {
-    setAiAnswer(''); setAiError('');
+    setAiError(''); setAiTurns([]);
     setActiveTopic(topic);
     const label = OFFLINE_TOPICS.find(t => t.key === topic)?.label ?? '专题';
     setReadings([{ heading: label, content: offlineTopicAnalysis(chart, topic) }]);
@@ -138,11 +138,15 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
 
   const askAi = async () => {
     if (aiLoading) return;
-    setAiError(''); setAiAnswer(''); setAiLoading(true);
+    setAiError(''); setAiError(''); setAiLoading(true);
     try {
       const response = await fetch('/api/interpret', {
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({birthInfo:chart.birthInfo,topic:activeTopic,question:input.trim().slice(0,500)}),
+        body:JSON.stringify({birthInfo:chart.birthInfo,topic:activeTopic,question:input.trim().slice(0,500),
+          history:aiTurns.slice(-3).flatMap(turn => [
+            {role:'user',content:turn.question.slice(0,500)},
+            {role:'assistant',content:turn.answer.slice(0,600)},
+          ])}),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(
@@ -151,7 +155,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
         : 'AI 解读暂时不可用，请稍后重试。',
       );
       if (!data || typeof data.answer !== 'string') throw new Error('AI 暂时未返回有效解读，请稍后重试。');
-      setAiAnswer(data.answer);
+      setAiTurns(prev => [...prev,{question:input.trim().slice(0,500) || '请解读当前专题',answer:data.answer}].slice(-4));
       setInput('');
     } catch (err) {setAiError(err instanceof Error ? err.message : 'AI 暂时不可用');}
     finally {setAiLoading(false);}
@@ -198,10 +202,16 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
         {activeTopic === 'wealth' && <WealthEvidencePanel chart={chart} year={liunianYear ?? new Date().getFullYear()} />}
         {aiLoading && <p role="status" className="text-[12px]" style={{color:'var(--t-text2)'}}>正在生成解读…</p>}
         {aiError && <p role="alert" className="text-[12px]" style={{color:'#f87171'}}>{aiError}</p>}
-        {aiAnswer && <article className="rounded-lg p-3" style={{border:'1px solid var(--t-border)',background:'var(--t-card)'}}>
-          <div className="text-[12px] font-semibold mb-2" style={{color:'var(--t-gold)'}}>AI 深度解读</div>
-          <p className="text-[12px] leading-[1.8] whitespace-pre-wrap" style={{color:'var(--t-text2)'}}>{aiAnswer}</p>
-        </article>}
+        {aiTurns.length > 0 && <div className="flex justify-end">
+          <button type="button" onClick={() => setAiTurns([])} className="min-h-11 text-xs underline"
+            style={{ color: 'var(--t-text2)' }}>清空 AI 对话</button>
+        </div>}
+        {aiTurns.map((turn, index) => <article key={index} className="rounded-lg p-3"
+          style={{border:'1px solid var(--t-border)',background:'var(--t-card)'}}>
+          <div className="text-[12px] font-semibold mb-1" style={{color:'var(--t-text)'}}>提问：{turn.question}</div>
+          <div className="text-[12px] font-semibold mb-2 mt-3" style={{color:'var(--t-gold)'}}>AI 深度解读</div>
+          <p className="text-[12px] leading-[1.8] whitespace-pre-wrap" style={{color:'var(--t-text2)'}}>{turn.answer}</p>
+        </article>)}
         {readings.map((reading, index) => (
           <article key={index} className="rounded-lg p-3" style={{ border: '1px solid var(--t-border)', background: 'var(--t-card)' }}>
             <div className="text-[11px] font-semibold mb-2" style={{ color: 'var(--t-text)' }}>{reading.heading}</div>
