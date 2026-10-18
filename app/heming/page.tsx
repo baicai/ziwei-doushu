@@ -54,8 +54,6 @@ export default function HemingPage() {
   const isDark = theme === 'dark';
 
   // ─── 双方命盘状态 ─────────────────────────────────────────
-  const [chartA, setChartA] = useState<ZiweiChart | null>(null);
-  const [chartB, setChartB] = useState<ZiweiChart | null>(null);
   // 双方表单状态由 BirthForm onFormSave 同步到此处，统一按钮触发起盘
   const [formA, setFormA] = useState<BirthFormState | null>(null);
   const [formB, setFormB] = useState<BirthFormState | null>(null);
@@ -96,22 +94,15 @@ export default function HemingPage() {
     setAnalysisError(false);
 
     try {
-      // 并行起两张盘（如果还没起）
-      let cA = chartA;
-      let cB = chartB;
-      const [newA, newB] = await Promise.all([
-        cA ? Promise.resolve(cA) : generateChart(formToBirthInfo(formA!)),
-        cB ? Promise.resolve(cB) : generateChart(formToBirthInfo(formB!)),
+      // Recalculate on every action: never compare charts cached from earlier form input.
+      const [cA, cB] = await Promise.all([
+        generateChart(formToBirthInfo(formA!)),
+        generateChart(formToBirthInfo(formB!)),
       ]);
-      cA = newA;
-      cB = newB;
       if (!cA || !cB) {
         setAnalysisError(true);
-        setAnalyzing(false);
         return;
       }
-      if (!chartA) setChartA(cA);
-      if (!chartB) setChartB(cB);
 
       const text = buildCompatibilityReading(cA, cB, q ?? '');
       setAnalysis(text);
@@ -122,7 +113,7 @@ export default function HemingPage() {
     } finally {
       setAnalyzing(false);
     }
-  }, [chartA, chartB, formA, formB, generateChart]);
+  }, [formA, formB, generateChart]);
 
   const cardStyle = {
     background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.9)',
