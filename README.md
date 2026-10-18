@@ -263,7 +263,7 @@ cd ziwei-doushu
 # 安装依赖
 npm install
 
-# 配置环境变量（只看排盘可以跳过；AI 配置仅在你自己实现了 /api/* 接口时才用得上）
+# 配置环境变量（只看排盘可以跳过；只有调用 AI 时才需要配置 DeepSeek API Key）
 cp .env.example .env.local
 
 # 启动开发服务器
@@ -279,7 +279,7 @@ npm test            # 排盘引擎回归（768 盘 × 紫微铁律、夏令时�
 
 每次 push 与 PR 都会在 GitHub Actions 上跑同一套（见 [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)）。
 
-> **注意：开源版不含后端 API 路由。**排盘、命盘展示、合盘起盘都在浏览器里用本仓库的引擎完成，**不需要任何 API Key**。AI 解读（`/api/interpret`）和合盘 AI 分析（`/api/heming`）需要你自己实现接口；没实现之前，这两处会直接提示「开源版不含该接口」，配置 API Key 也不会变成可用（#30 就是这个原因）。
+> **当前实现**：排盘和六专题规则解读无需 API Key；`/api/interpret` 已接入可选的 DeepSeek 服务端调用，需要配置 `DEEPSEEK_API_KEY`。合盘 AI 接口 `/api/heming` 尚未实现，请勿将合盘入口视为已完成的功能。AI 演示接口目前只有基础的单实例访问限制，公开访问前还需要增加可靠的额度与风控保护。
 
 ---
 
@@ -358,7 +358,7 @@ npm test            # 排盘引擎回归（768 盘 × 紫微铁律、夏令时�
 
 **Demo 能跑通的**：出生信息表单、命盘方格与宫位详情、本命 / 大限 / 流年切换、古籍阅读器（全文搜索）、命理百科（14 主星 × 12 宫位）、亮暗主题、移动端适配。
 
-**Demo 里没有的**：线上重做过的交互界面、AI 流式解读、合盘图谱、分享卡片，以及**断语内容本身**（`db-analysis.ts` 是占位实现）。也就是说，Demo 画得出盘，但给不出线上那套解读。
+**现阶段的界限**：已提供六专题基础规则解读和可选 DeepSeek AI 解读；合盘 AI、多模型评测及其他高级体验仍在开发中。`db-analysis.ts` 并不包含完整商业断语库，请以实际代码为准。
 
 ---
 
@@ -367,9 +367,9 @@ npm test            # 排盘引擎回归（768 盘 × 紫微铁律、夏令时�
 | | 内容 |
 |---|---|
 | ✅ **开源** | 排盘引擎（`lib/ziwei/`）、古籍公版原文（`lib/classics/`）、SEO 知识图谱（`lib/seo/`）、Demo 界面、51.8 万样本数据集、13 维解读数据集 v4.0 |
-| ❌ **不开源** | 断语库（`lib/ziwei/db-analysis.ts` 是占位，线上是上万行的 13 主题断语）、AI 解读 prompt、后端 API（`/api/interpret` 等）、用户系统（登录 / 会员 / 支付）、服务端安全（签名、防刷、水印）、部署配置 |
+| ⚠️ **尚未提供或未完整实现** | 完整商业断语库、合盘 AI `/api/heming`、账号/会员/支付、可靠的服务端额度和防滥用控制、多模型评测。DeepSeek 接口及提示词已包含在本仓库代码中。 |
 
-如果你需要 AI 解读能力，可以参考 `lib/ziwei/patterns.ts` 和 `heming-knowledge.ts` 里的知识库，结合任意 LLM 自行构建 prompt。
+AI 解读示例位于 `app/api/interpret/route.ts`，需在部署服务端配置 `DEEPSEEK_API_KEY`。不要把密钥提交到仓库或暴露给浏览器。
 
 ---
 
