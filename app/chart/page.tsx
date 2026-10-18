@@ -7,6 +7,7 @@ import MobilePalaceExplorer from '@/components/MobilePalaceExplorer';
 import InsightPanel from '@/components/InsightPanel';
 import TimeNav, { type TimeView } from '@/components/TimeNav';
 import { generateChart } from '@/lib/ziwei/algorithm';
+import { formToBirthInfo } from '@/lib/ziwei/share';
 import { LAST_CHART_STORAGE_KEY, buildCachedChart, parseCachedChart, type CachedChartInput } from '@/lib/ziwei/chart-cache';
 import type { BirthInfo, ZiweiChart, Palace } from '@/lib/ziwei/types';
 
@@ -43,10 +44,13 @@ export default function ChartPage() {
       const stored = parseCachedChart(raw);
       if (stored) {
         try {
-          const generated = generateChart(stored.birthInfo);
+          // Recalculate from the saved original form so time-rule improvements
+          // do not silently keep a chart made with an older conversion path.
+          const latestBirth = formToBirthInfo(stored.form);
+          const generated = generateChart(latestBirth);
           setChart(generated);
           setShowingSample(false);
-          setCached(stored);
+          setCached({ ...stored, birthInfo: latestBirth });
           draftRef.current = stored.form;
         } catch {
           // An old or invalid engine input must not prevent using the form.
@@ -121,7 +125,7 @@ export default function ChartPage() {
 
   if (restoring) {
     return <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 20px' }} role="status">
-      正在检查本地保存的命盘…
+      正在恢复上次命盘…
     </main>;
   }
 
