@@ -37,6 +37,17 @@ export default function ChartPage() {
   const [notice, setNotice] = useState('');
   const [showingSample, setShowingSample] = useState(false);
   const draftRef = useRef<BirthFormState | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+  const [navHeight, setNavHeight] = useState(60);
+
+  useEffect(() => {
+    if (!chart || !navRef.current || typeof ResizeObserver === 'undefined') return;
+    const node = navRef.current;
+    const observer = new ResizeObserver(() => setNavHeight(Math.ceil(node.getBoundingClientRect().height)));
+    observer.observe(node);
+    setNavHeight(Math.ceil(node.getBoundingClientRect().height));
+    return () => observer.disconnect();
+  }, [chart]);
 
   useEffect(() => {
     try {
@@ -183,7 +194,7 @@ export default function ChartPage() {
   }
 
   return (
-    <main style={{ maxWidth: 1280, margin: '0 auto', padding: '16px 12px 72px' }}>
+    <main style={{ maxWidth: 1280, margin: '0 auto', padding: '16px 12px 72px', '--ziwei-nav-height': `${navHeight}px` } as React.CSSProperties}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 flex-wrap">
           <button type="button" onClick={() => { setEditing(true); setFormRevision(n => n + 1); }}
@@ -207,10 +218,13 @@ export default function ChartPage() {
         </p>
       )}
 
-      <TimeNav chart={chart} view={view} liunianYear={liunianYear}
-        onViewChange={setView} onYearChange={setLiunianYear} />
+      <div ref={navRef} id="chart-time-tabs" className="sticky top-0 z-40 xl:static px-1 py-2 -mx-1 rounded-xl" style={{ background: 'var(--t-bg, rgba(12,17,27,0.95))', backdropFilter: 'blur(14px)' }}>
+        <TimeNav chart={chart} view={view} liunianYear={liunianYear}
+          onViewChange={v => { setView(v); if (window.innerWidth < 1280) navRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+          onYearChange={setLiunianYear} />
+      </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-4 xl:gap-5 mt-4 items-start min-w-0">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-4 xl:gap-5 mt-3 items-start min-w-0">
         <div className="min-w-0">
           <div className="xl:hidden">
             <MobilePalaceExplorer chart={chart}
@@ -227,6 +241,9 @@ export default function ChartPage() {
         <div className="min-w-0"><InsightPanel chart={chart} selectedPalace={selectedPalace} liunianYear={liunianYear} timeView={view} /></div>
       </div>
 
+      {chart.birthInfo.timePrecision === 'unknown' && <p role="note" className="mb-3 rounded-xl px-3 py-3 text-sm" style={{ background:'var(--t-card)', border:'1px solid var(--t-border)',color:'var(--t-text2)' }}>
+        出生时辰不详：当前仅按子时展示一张试排盘，宫位与分析可能变化，不能视为确定命盘。建议补充出生时间。
+      </p>}
       <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--t-faint)' }}>
         隐私提示：出生资料保存在当前设备，且未加密。共用设备请及时清除。
       </p>
