@@ -36,5 +36,5 @@ assert.deepEqual([nearEnd.year,nearEnd.month,nearEnd.day],[2025,1,1]);
 const prevLate=formToBirthInfo(form({year:'2000',month:'2',day:'1',clockHour:'0',clockMinute:'30',province:'云南',city:'某地',longitude:90}));
 const st=calculateTrueSolarTime({year:2000,month:2,day:1,clockHour:0,clockMinute:30,longitude:90});
 assert.equal(prevLate.hour,st.branch);
-assert.equal(prevLate.day,2000===prevLate.year&&1===prevLate.month?31:prevLate.day);
+assert.deepEqual([prevLate.year,prevLate.month,prevLate.day],[2000,1,31]);
 console.log('Birth date / local solar-time / zishi regression checks passed');
