@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import BirthForm, { type BirthFormState } from '@/components/BirthForm';
 import ChartBoard from '@/components/ChartBoard';
+import MobilePalaceExplorer from '@/components/MobilePalaceExplorer';
 import InsightPanel from '@/components/InsightPanel';
 import TimeNav, { type TimeView } from '@/components/TimeNav';
 import { generateChart } from '@/lib/ziwei/algorithm';
@@ -206,7 +207,19 @@ export default function ChartPage() {
         onViewChange={setView} onYearChange={setLiunianYear} />
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-4 xl:gap-5 mt-4 items-start min-w-0">
-        <div className="min-w-0"><div className="overflow-x-auto overscroll-x-contain rounded-xl" aria-label="命盘，可左右滚动查看更多"><div className="min-w-[600px] sm:min-w-0"><ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} timeView={view} liunianYear={liunianYear} /></div></div></div>
+        <div className="min-w-0">
+          <div className="xl:hidden">
+            <MobilePalaceExplorer chart={chart}
+              selectedPalace={selectedPalace} onSelect={setSelectedPalace}
+              onClear={() => setSelectedPalace(null)}
+              timeView={view} liunianYear={liunianYear} />
+          </div>
+          <div className="hidden xl:block">
+            <ChartBoard chart={chart} selectedBranch={selectedPalace?.branch ?? null}
+              onPalaceSelect={setSelectedPalace} onPalaceClear={() => setSelectedPalace(null)}
+              timeView={view} liunianYear={liunianYear} />
+          </div>
+        </div>
         <div className="min-w-0"><InsightPanel chart={chart} selectedPalace={selectedPalace} liunianYear={liunianYear} timeView={view} /></div>
       </div>
 
