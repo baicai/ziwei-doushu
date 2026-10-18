@@ -65,6 +65,18 @@ export function buildWealthReading(chart: ZiweiChart): WealthReading {
   else if (wuji.length) emit('W01', '财务责任主题',
     '财帛宫的武曲化忌，在传统象征中常用于讨论财务责任和资源管理。',
     wuji, ['单一星曜不足以判断财富结果']);
+  else {
+    const base = (indexed['财帛'] ?? []).filter(e => e.classification === 'major');
+    if (base.length) emit('W01', '财帛宫基础结构',
+      `财帛宫主星为${base.map(e => e.star + (e.natalSiHua ? '化' + e.natalSiHua : '')).join('、')}。从传统象征角度，可围绕资源获取、分配和使用方式进一步对照官禄、命宫。`,
+      base, ['该规则仅记录盘面结构，不对财务结果作判断']);
+    else {
+      const refs = (indexed['财帛'] ?? []).slice(0, 3);
+      if (refs.length) emit('W01', '财帛宫空宫或无主星',
+        '财帛宫未记录主星，不能按某个主星套用财运结论；应继续核对对宫和三方四正。',
+        refs, ['辅助星不能替代对宫主星进行判断']);
+    }
+  }
   const ziwei = matches('命', ['紫微'], '权');
   const pojun = matches('命', ['破军']);
   const lianzhen = matches('官禄', ['廉贞']);
@@ -74,11 +86,25 @@ export function buildWealthReading(chart: ZiweiChart): WealthReading {
     emit('W02', '收入与事业之间的关系',
       '命宫主导和改变的传统象征，与官禄宫竞争、资源协调的主题并存；应区分创造机会与实际兑现成果。',
       w02, ['不构成职业或创业适合度测评']);
+  else {
+    const career = (indexed['官禄'] ?? []).filter(e => e.classification === 'major');
+    const life = (indexed['命'] ?? []).filter(e => e.classification === 'major');
+    if (career.length && life.length) emit('W02', '事业与求财的关联宫位',
+      `官禄宫主星${career.map(e => e.star).join('、')}与命宫主星${life.map(e => e.star).join('、')}共同构成工作角色、个人行动与资源使用之间的传统观察背景。`,
+      [...career, ...life], ['宫位关联不代表职业收入必然提高']);
+  }
   const taiyin = matches('田宅', ['太阴']);
   const tianfu = matches('福德', ['天府']);
   if (taiyin.length) emit('W03', '资产积累',
     '田宅宫太阴的传统象征可引出稳定、家庭资产与长期积累的主题；它不同于财帛宫的收入主题。',
     [...taiyin, ...tianfu], ['不能预测房产数量、房价或晚年财富']);
+  else {
+    const home = (indexed['田宅'] ?? []).filter(e => e.classification === 'major');
+    const wellbeing = (indexed['福德'] ?? []).filter(e => e.classification === 'major');
+    if (home.length) emit('W03', '积累与生活基础',
+      `田宅宫主星为${home.map(e => e.star).join('、')}；该宫与福德宫是资产积累和生活基础的补充观察角度，不属于财帛宫的三方四正。`,
+      [...home, ...wellbeing], ['不能由命盘预测具体房产或资产价值']);
+  }
   const risk = (indexed['官禄'] ?? []).filter(e => ['地空', '地劫', '天空'].includes(e.star));
   const lu = matches('官禄', ['禄存']);
   const constraint = [...risk, ...lu, ...wuji];
@@ -86,6 +112,15 @@ export function buildWealthReading(chart: ZiweiChart): WealthReading {
     emit('W04', '资源与制约因素',
       '官禄宫出现空劫类星曜，与禄存或财帛武曲化忌共同形成资源投入和结果兑现的传统反思主题。',
       constraint, ['不能由此断言亏损、破产或投资风险概率']);
+  else {
+    const observed = [
+      ...(indexed['财帛'] ?? []).filter(e => e.natalSiHua === '忌' || e.classification === 'sha'),
+      ...(indexed['官禄'] ?? []).filter(e => e.natalSiHua === '忌' || e.classification === 'sha'),
+    ];
+    if (observed.length) emit('W04', '需综合考量的盘面因素',
+      `财帛、官禄宫记录了${observed.map(e => e.star + (e.natalSiHua ? '化' + e.natalSiHua : '')).join('、')}等传统制约取象，应结合主星、辅星及四化共同理解，不能只看单颗星。`,
+      observed, ['煞星、化忌不等于现实中必然出现财务损失']);
+  }
   output.status = output.missing.length ? 'partial' : 'complete';
   return output;
 }
