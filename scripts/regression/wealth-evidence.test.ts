@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import { buildWealthReading, validateWealthReading } from '../../lib/analysis/wealth';
+import type { Palace, ZiweiChart, Star } from '../../lib/ziwei/types';
+const star=(name:string, type:Star['type']='major', siHua?:Star['siHua']):Star=>({name,type,siHua});
+const p:Palace[]=Array.from({length:12},(_,i)=>({branch:i,stem:i%10,name:'占位'+i,stars:[]}));
+function set(i:number,name:string,stars:Star[]) {p[i]={...p[i],name,stars};}
+set(0,'命宫',[star('紫微','major','权'),star('破军')]);
+set(1,'财帛宫',[star('武曲','major','忌'),star('七杀')]);
+set(2,'官禄宫',[star('廉贞'),star('贪狼'),star('禄存','lucky'),star('地空','sha'),star('地劫','sha')]);
+set(3,'田宅宫',[star('太阴')]);
+set(4,'福德宫',[star('天府')]);
+const chart={palaces:p} as ZiweiChart;
+const result=buildWealthReading(chart);
+assert.equal(result.status,'complete');
+assert.deepEqual(result.findings.map(f=>f.ruleId),['W01','W02','W03','W04']);
+assert.deepEqual(validateWealthReading(chart,result),[]);
+const altered={...result,findings:[{...result.findings[0], evidenceIds:['N-9-5-杜撰']} ]};
+assert.ok(validateWealthReading(chart,altered).length);
+const missingJi={...chart,palaces:p.map(x=>({...x,stars:x.stars.map(s=>({...s,siHua:s.name==='武曲'?undefined:s.siHua}))}))};
+assert.ok(!buildWealthReading(missingJi).findings.some(f=>f.ruleId==='W01'));
+const bad={...chart,palaces:p.slice(0,11)};
+assert.equal(buildWealthReading(bad).status,'invalid');
+console.log('wealth W01-W04 evidence regression passed');
