@@ -5,6 +5,9 @@ import type { BirthInfo } from '@/lib/ziwei/types';
 import { SHICHEN } from '@/lib/ziwei/constants';
 import { useTheme } from '@/components/ThemeProvider';
 import { PROVINCES } from '@/lib/ziwei/cities';
+import { formToBirthInfo } from '@/lib/ziwei/share';
+import { calculateTrueSolarTime, formatTrueSolarClock, resolveZiweiDayOffset, shiftGregorianDate } from '@/lib/ziwei/true-solar-time';
+import { isChinaDST } from '@/lib/ziwei/dst-cn';
 
 export interface BirthFormState {
   name: string;
@@ -30,15 +33,6 @@ interface BirthFormProps {
 }
 
 const SHICHEN_NAMES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
-
-/** 根据北京时间 + 经度计算真太阳时时辰支 (0-11) */
-function calcTrueSolarBranch(clockHour: number, clockMinute: number, longitude: number): number {
-  const clockMins = clockHour * 60 + clockMinute;
-  const offset = (longitude - 120) * 4;
-  const solar = ((clockMins + offset) % 1440 + 1440) % 1440;
-  if (solar >= 1380 || solar < 60) return 0;
-  return Math.floor((solar - 60) / 120) + 1;
-}
 
 /** 检查日期是否合法 */
 function isValidDate(y: number, m: number, d: number): boolean {
@@ -79,16 +73,21 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
     return prov ? prov.cities : [];
   }, [form.province]);
 
-  const branch = useMemo(() => {
-    if (form.unknownTime) return 0;
-    return calcTrueSolarBranch(
-      parseInt(form.clockHour) || 0,
-      parseInt(form.clockMinute) || 0,
-      form.longitude,
-    );
-  }, [form.clockHour, form.clockMinute, form.longitude, form.unknownTime]);
-
-  const offsetMin = Math.round((form.longitude - 120) * 4);
+  const solarTime = useMemo(() => {
+    if (form.unknownTime) return null;
+    return calculateTrueSolarTime({
+      year: Number(form.year), month: Number(form.month), day: Number(form.day),
+      clockHour: Number(form.clockHour), clockMinute: Number(form.clockMinute),
+      longitude: form.province && form.city ? form.longitude : undefined,
+    });
+  }, [form.year, form.month, form.day, form.clockHour, form.clockMinute,
+    form.province, form.city, form.longitude, form.unknownTime]);
+  const branch = solarTime?.branch ?? 0;
+  const dayOffset = solarTime ? resolveZiweiDayOffset(solarTime, 'next-day') : 0;
+  const effectiveDate = dayOffset && solarTime?.dateValid
+    ? shiftGregorianDate({ year: Number(form.year), month: Number(form.month), day: Number(form.day) }, dayOffset)
+    : null;
+  const offsetMin = form.province && form.city ? Math.round((form.longitude - 120) * 4) : 0;
   const shichenInfo = SHICHEN[branch];
 
   // ─── 校验逻辑 ───────────────────────────────────────────
@@ -145,7 +144,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
     setTouched({ year: true, month: true, day: true });
     if (hasError) return;
     onFormSave?.({ ...form });
-    onSubmit({ year: y, month: m, day: d, hour: branch, gender: form.gender, name: form.name || undefined, province: form.province || undefined, city: form.city || undefined, longitude: form.province ? form.longitude : undefined });
+    onSubmit(formToBirthInfo(form));
   };
 
   // ─── 样式变量 ────────────────────────────────────────────
@@ -340,7 +339,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
               exit={{ opacity: 0 }}
               style={{ fontSize: '10px', color: isDark ? 'rgba(165,185,210,0.7)' : 'rgba(140,100,20,0.45)', marginTop: '5px' }}
             >
-              * 倪海厦批命用真太阳时，建议填写出生地以自动校正时辰
+              填写出生地可校正时间；未填写时按北京时间计算
             </motion.p>
           )}
         </AnimatePresence>
@@ -370,9 +369,9 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
               ))}
             </select>
           </div>
-          {/* 真太阳时结果 */}
+          {/* 统一显示排盘引擎实际采用的时辰及排盘日 */}
           <div style={{ textAlign: 'center', padding: '4px 0' }}>
-            <span style={{ fontSize: '10px', color: isDark ? 'rgba(170,195,220,0.75)' : 'rgba(140,100,20,0.5)' }}>真太阳时 → </span>
+            <span style={{ fontSize: '10px', color: isDark ? 'rgba(170,195,220,0.75)' : 'rgba(140,100,20,0.5)' }}>{form.province && form.city ? '校正时间 → ' : '出生时辰 → '} </span>
             <span style={{ fontSize: '15px', color: goldText, fontWeight: 600, letterSpacing: '0.08em' }}>
               {SHICHEN_NAMES[branch]}时
             </span>
@@ -382,6 +381,15 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
               </span>
             )}
           </div>
+          {solarTime?.dateValid && <p style={{ textAlign: 'center', fontSize: '11px', margin: '6px 0 0', color: labelClr }}>
+            {form.province && form.city ? `当地太阳时间：${formatTrueSolarClock(solarTime)}` : '按北京时间推算'}
+            {effectiveDate ? ` · 排盘日期：${effectiveDate.year}年${effectiveDate.month}月${effectiveDate.day}日` : ''}
+          </p>}
+          {solarTime?.dateValid && form.province && form.city && isChinaDST(Number(form.year), Number(form.month), Number(form.day)) && (
+            <p role="note" style={{ fontSize: '11px', margin: '8px 0 0', color: goldText, lineHeight: 1.7 }}>
+              所填日期可能涉及历史夏令时。请确认输入的是已换算的北京时间；如为当年夏令时钟表读数，请先自行减去一小时。
+            </p>
+          )}
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '8px', cursor: 'pointer' }}>
           <input
