@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { budgetKeys, reserveAiBudget } from '../../lib/ai/budget';
 
+async function runBudgetChecks() {
 const now = new Date('2026-10-19T00:01:00.000Z');
 const keys = budgetKeys(now);
 assert.equal(keys.daily, 'iziwei:ai:requests:day:2026-10-19');
@@ -55,3 +56,6 @@ assert.deepEqual(await reserveAiBudget({},now),
   {allowed:true,mode:'not-enabled'});
 
 console.log('Atomic AI global request budget unit checks passed (no live Redis claim)');
+
+}
+runBudgetChecks().catch(error => { console.error(error); process.exitCode = 1; });
