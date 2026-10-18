@@ -1,8 +1,8 @@
-/**
- * 站点根地址。部署时在 .env.local 里配置 NEXT_PUBLIC_SITE_URL（见 .env.example）；
- * 未配置时用本机开发地址，避免 fork 部署后把 sitemap、canonical 指向别人的域名。
- */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+/** Public origin used for canonical URLs, sitemaps and share previews. */
+const productionHostname = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  || (process.env.VERCEL_ENV === 'production' ? process.env.VERCEL_URL : undefined);
+const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL
+  || (productionHostname ? 'https://' + productionHostname : 'http://localhost:3000');
 
-/** 只取域名部分，用于界面上展示（如分享卡底部） */
+export const SITE_URL = configuredOrigin.replace(/\/+$/, '');
 export const SITE_HOST = SITE_URL.replace(/^https?:\/\//, '');
