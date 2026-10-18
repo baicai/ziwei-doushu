@@ -480,7 +480,7 @@ export default function HomePage() {
       </div>
 
       {/* ── 顶部导航 ── nav 与 hero 同色（c.bgBase），无 blur 无 border，彻底无色差带 */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-8 py-3 sm:py-4 gap-2"
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 sm:px-8 py-2 sm:py-4 gap-1 sm:gap-2"
         style={{
           background: c.navBg,
         }}>
@@ -493,7 +493,7 @@ export default function HomePage() {
           <motion.button
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
             onClick={() => router.push('/heming')}
-            className="text-[11px] sm:text-xs px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full transition-all duration-300"
+            className="text-[11px] sm:text-xs px-2.5 sm:px-4 py-2.5 sm:py-1.5 min-h-11 rounded-full transition-all duration-300"
             style={{ border: `1px solid ${c.navBorder}`, color: c.textMuted }}>
             合盘
           </motion.button>
@@ -508,7 +508,7 @@ export default function HomePage() {
       </nav>
 
       {/* ══ HERO ══════════════════════════════════════════ */}
-      <section ref={heroRef} className="relative min-h-[82svh] lg:min-h-[92vh] flex flex-col items-center justify-center px-6 z-10 pb-24 pt-10">
+      <section ref={heroRef} className="relative min-h-[82svh] lg:min-h-[92vh] flex flex-col items-center justify-center px-4 sm:px-6 z-10 pb-16 sm:pb-24 pt-20 sm:pt-10">
         <motion.div style={{ y: heroY, opacity: heroOpacity, maxWidth: '960px' }} className="text-center w-full mx-auto mt-10">
           {/* 标签行 */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -528,7 +528,7 @@ export default function HomePage() {
             <h1
               className={`grad-text ${theme === 'dark' ? 'grad-text-dark' : 'grad-text-light'} font-bold leading-none mb-5`}
               style={{
-                fontSize: 'clamp(56px, 10vw, 124px)',
+                fontSize: 'clamp(40px, 10vw, 124px)',
                 letterSpacing: '0.07em',
               }}>
               紫微命盘
@@ -570,7 +570,7 @@ export default function HomePage() {
           {/* 十四主星 */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ delay: 1.05, duration: 0.8 }}
-            className="mt-12 grid grid-cols-7 gap-1.5 max-w-[540px] mx-auto">
+            className="mt-8 sm:mt-12 grid grid-cols-4 sm:grid-cols-7 gap-1.5 max-w-[540px] mx-auto">
             {STARS.map((star, i) => (
               <motion.div key={star.name}
                 initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
