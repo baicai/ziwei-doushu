@@ -40,7 +40,7 @@ export function budgetKeys(now: Date) {
 }
 
 export async function reserveAiBudget(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Record<string, string | undefined> = process.env,
   now: Date = new Date(),
   fetcher: typeof fetch = fetch,
 ): Promise<BudgetResult> {
