@@ -5,7 +5,8 @@ import type { BirthInfo } from '@/lib/ziwei/types';
 import { SHICHEN } from '@/lib/ziwei/constants';
 import { useTheme } from '@/components/ThemeProvider';
 import { PROVINCES } from '@/lib/ziwei/cities';
-import { formToBirthInfo, resolveFormSolarDate } from '@/lib/ziwei/share';
+import { formToBirthInfo, resolveFormSolarDate, resolveFormBeijingClock } from '@/lib/ziwei/share';
+import { BIRTH_TIME_ZONES } from '@/lib/ziwei/time-zone';
 import { leapMonthOfLunarYear, lunarMonthDayCount } from '@/lib/ziwei/lunar-solar';
 import { calculateTrueSolarTime, formatTrueSolarClock, resolveZiweiDayOffset, shiftGregorianDate } from '@/lib/ziwei/true-solar-time';
 import { isChinaDST } from '@/lib/ziwei/dst-cn';
@@ -23,6 +24,8 @@ export interface BirthFormState {
   unknownTime: boolean;
   province: string;
   city: string;
+  locationMode?: 'china' | 'overseas';
+  timeZone?: string;
   longitude: number;
   gender: 'male' | 'female';
 }
@@ -61,6 +64,8 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
     unknownTime: initialData?.unknownTime ?? false,
     province: initialData?.province ?? '',
     city: initialData?.city ?? '',
+    locationMode: initialData?.locationMode ?? 'china',
+    timeZone: initialData?.timeZone ?? 'Asia/Shanghai',
     longitude: initialData?.longitude ?? 120,
     gender: initialData?.gender ?? 'male',
   });
@@ -87,21 +92,29 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
     ? lunarMonthDayCount(Number(form.year), Number(form.month), Boolean(form.isLeapMonth))
     : 31;
 
+  const beijingClock = useMemo(() => {
+    if (form.unknownTime || !solarDate) return { value: null, error: '' };
+    try { return { value: resolveFormBeijingClock(form), error: '' }; }
+    catch (e) { return { value: null, error: e instanceof Error ? e.message : '请核实当地出生时间' }; }
+  }, [solarDate, form.clockHour, form.clockMinute, form.locationMode, form.timeZone, form.unknownTime]);
+
   const solarTime = useMemo(() => {
-    if (form.unknownTime || !solarDate) return null;
+    const clock = beijingClock.value;
+    if (!clock) return null;
+    const locationValid = (form.locationMode === 'overseas' ? Boolean(form.city) : Boolean(form.province && form.city))
+      && Number.isFinite(form.longitude);
     return calculateTrueSolarTime({
-      ...solarDate,
-      clockHour: Number(form.clockHour), clockMinute: Number(form.clockMinute),
-      longitude: form.province && form.city ? form.longitude : undefined,
+      year: clock.year, month: clock.month, day: clock.day,
+      clockHour: clock.clockHour, clockMinute: clock.clockMinute,
+      longitude: locationValid ? form.longitude : undefined,
     });
-  }, [solarDate, form.clockHour, form.clockMinute,
-    form.province, form.city, form.longitude, form.unknownTime]);
+  }, [beijingClock, form.longitude, form.province, form.city, form.locationMode]);
   const branch = solarTime?.branch ?? 0;
   const dayOffset = solarTime ? resolveZiweiDayOffset(solarTime, 'next-day') : 0;
   const effectiveDate = dayOffset && solarTime?.dateValid
-    ? shiftGregorianDate(solarDate!, dayOffset)
+    ? shiftGregorianDate({year:beijingClock.value!.year, month:beijingClock.value!.month, day:beijingClock.value!.day}, dayOffset)
     : null;
-  const offsetMin = form.province && form.city ? Math.round((form.longitude - 120) * 4) : 0;
+  const offsetMin = Number.isFinite(form.longitude) && form.city ? Math.round((form.longitude - 120) * 4) : 0;
   const shichenInfo = SHICHEN[branch];
 
   // ─── 校验逻辑 ───────────────────────────────────────────
@@ -118,13 +131,16 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
     day: !form.day ? '请选择日期'
       : form.year && form.month && !solarDate ? (form.isLunar ? '农历日期或闰月无效' : `${m}月没有${d}日`)
       : '',
+    location: form.locationMode === 'overseas' && (!form.city.trim() || !Number.isFinite(form.longitude) || Math.abs(form.longitude)>180 || !form.timeZone)
+      ? '请填写海外出生城市、经度和时区' : '',
+    clock: beijingClock.error,
   };
   const hasError = Object.values(errors).some(Boolean);
 
   // ─── 完成度（用于进度条） ────────────────────────────────
   const steps = [
     !!form.year && !!form.month && !!form.day && !errors.year && !errors.month && !errors.day,
-    !!form.province && !!form.city,
+    form.locationMode === 'overseas' ? !errors.location : !!form.province && !!form.city,
     form.unknownTime || (!!form.clockHour && !!form.clockMinute),
     true, // 性别有默认值
   ];
@@ -159,7 +175,8 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
     setTouched({ year: true, month: true, day: true });
     if (hasError || !solarDate) return;
     onFormSave?.({ ...form });
-    onSubmit(formToBirthInfo(form));
+    try { onSubmit(formToBirthInfo(form)); }
+    catch { setSubmitAttempted(true); }
   };
 
   // ─── 样式变量 ────────────────────────────────────────────
