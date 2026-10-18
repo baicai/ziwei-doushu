@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { selectedTimeReading } from '../../lib/ziwei/time-reading';
+import type { ZiweiChart, Palace } from '../../lib/ziwei/types';
+const palaces: Palace[]=Array.from({length:12},(_,i)=>({branch:i,stem:i%10,name:'测试宫'+i,stars:[{name:i===0?'廉贞':i===1?'破军':i===2?'武曲':'天府',type:'major'}]}));
+const chart={palaces,daXians:[{startAge:35,endAge:44,palaceBranch:0,palaceName:'测试宫0'}],currentDaXianIndex:0} as ZiweiChart;
+assert.equal(selectedTimeReading(chart,'mingpan',2026),null);
+const decade=selectedTimeReading(chart,'daxian',2026)!;
+assert.ok(decade.title.includes('35–44'));
+assert.ok(decade.details.includes('时间层天干：甲'));
+const year=selectedTimeReading(chart,'liunian',2026)!;
+assert.ok(year.details.includes('时间层天干：丙'));
+assert.ok(year.limitations.some(s=>s.includes('流年宫位')));
+assert.ok(selectedTimeReading(chart,'liunian',1899)!.details.includes('时间层资料不足，暂不能解释。'));
+console.log('selected time evidence regression passed');
