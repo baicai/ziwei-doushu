@@ -6,16 +6,16 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: '紫微命盘 · 倪海厦正宗紫微斗数',
-  description: '基于倪海厦正宗紫微斗数体系，AI深度解读您的命盘格局、大限流年、感情事业财富健康全方位解析',
-  keywords: '紫微斗数, 倪海厦, 紫微斗数全集, 紫微斗数全书, 骨髓赋, 命盘, 命理, 14主星, 12宫位',
+  title: '紫微研究 · 紫微斗数命盘',
+  description: '紫微斗数排盘、十二宫解析、大限流年与命盘综合解读。',
+  keywords: '紫微斗数, 紫微命盘, 排盘, 十二宫, 大限, 流年, 命盘解析',
   metadataBase: new URL(SITE_URL),
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: '紫微命盘 · 倪海厦正宗紫微斗数',
-    description: '基于倪海厦正宗紫微斗数体系，AI深度解读您的命盘格局、大限流年、感情事业财富健康全方位解析',
+    title: '紫微研究 · 紫微斗数命盘',
+    description: '紫微斗数排盘、十二宫解析、大限流年与命盘综合解读。',
     url: SITE_URL,
     siteName: '紫微研究',
     locale: 'zh_CN',
