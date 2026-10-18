@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ZiweiChart, Palace } from '@/lib/ziwei/types';
+import WealthEvidencePanel from '@/components/WealthEvidencePanel';
 import type { TimeView } from './TimeNav';
 
 interface Message {
@@ -20,6 +21,7 @@ interface InsightPanelProps {
   chart: ZiweiChart;
   selectedPalace?: Palace | null;
   selectedSiHua?: SelectedSiHua | null;
+  liunianYear?: number;
 }
 
 const TOPICS = [
@@ -182,7 +184,7 @@ function AiContent({ text, streaming }: { text: string; streaming?: boolean }) {
   );
 }
 
-export default function InsightPanel({ chart, selectedPalace, selectedSiHua }: InsightPanelProps) {
+export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liunianYear }: InsightPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -339,7 +341,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
   const handleTopicClick = (topicKey: string) => {
     if (loadingRef.current) return;
     setActiveTopic(topicKey);
-    sendMessage(TOPIC_PROMPTS[topicKey], true);
+    if (topicKey !== 'wealth') sendMessage(TOPIC_PROMPTS[topicKey], true);
   };
 
   const handleSend = () => {
@@ -376,8 +378,9 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
       {/* ── Messages ── */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
 
+        {activeTopic === 'wealth' && <WealthEvidencePanel chart={chart} year={liunianYear ?? new Date().getFullYear()} />}
         {/* Loading state before first message */}
-        {messages.length === 0 && (
+        {messages.length === 0 && activeTopic !== 'wealth' && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="text-4xl mb-3" style={{ color: 'var(--t-gold)', opacity: 0.1 }}>✦</div>
             <p className="text-[10px] animate-pulse" style={{ color: 'var(--t-faint)' }}>命格解读生成中…</p>
@@ -385,7 +388,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
         )}
 
         <AnimatePresence initial={false}>
-          {messages.map((msg, i) => {
+          {activeTopic !== 'wealth' && messages.map((msg, i) => {
             if (msg.role === 'user' && msg.hidden) return null;
 
             if (msg.role === 'user') {
@@ -433,7 +436,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
       </div>
 
       {/* ── Input ── */}
-      <div className="flex-shrink-0 px-3 pb-3 pt-2" style={{ borderTop: '1px solid var(--t-border)' }}>
+      {activeTopic !== 'wealth' && <div className="flex-shrink-0 px-3 pb-3 pt-2" style={{ borderTop: '1px solid var(--t-border)' }}>
         <div className="flex gap-2">
           <input
             type="text"
@@ -462,7 +465,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
             {loading ? '…' : '追问'}
           </button>
         </div>
-      </div>
+      </div>}
 
     </div>
   );
