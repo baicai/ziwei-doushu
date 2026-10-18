@@ -6,6 +6,7 @@ import ChartBoard from '@/components/ChartBoard';
 import MobilePalaceExplorer from '@/components/MobilePalaceExplorer';
 import InsightPanel from '@/components/InsightPanel';
 import ReportPanel from '@/components/ReportPanel';
+import UnknownHourChoices from '@/components/UnknownHourChoices';
 import TimeNav, { type TimeView } from '@/components/TimeNav';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import { formToBirthInfo } from '@/lib/ziwei/share';
@@ -261,6 +262,12 @@ export default function ChartPage() {
         </p>
       )}
 
+      <UnknownHourChoices chart={chart} onSelect={next => {
+        setChart(next);
+        setSelectedPalace(null);
+        setView('mingpan');
+        setNotice('已切换候选时辰，此次仅供试排比较，未修改保存的出生资料。');
+      }} />
       <div ref={navRef} id="chart-time-tabs" className="sticky top-0 z-40 xl:static px-1 py-2 -mx-1 rounded-xl" style={{ background: 'var(--t-surface)', backdropFilter: 'blur(14px)' }}>
         <TimeNav chart={chart} view={view} liunianYear={liunianYear}
           onViewChange={v => { setView(v); if (window.innerWidth < 1280) navRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
@@ -284,9 +291,6 @@ export default function ChartPage() {
         <div className="min-w-0"><InsightPanel chart={chart} selectedPalace={selectedPalace} liunianYear={liunianYear} timeView={view} /></div>
       </div>
 
-      {chart.birthInfo.timePrecision === 'unknown' && <p role="note" className="mb-3 rounded-xl px-3 py-3 text-sm" style={{ background:'var(--t-card)', border:'1px solid var(--t-border)',color:'var(--t-text2)' }}>
-        出生时辰不详：当前仅按子时展示一张试排盘，宫位与分析可能变化，不能视为确定命盘。建议补充出生时间。
-      </p>}
       <ReportPanel chart={chart} year={liunianYear} />
       <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--t-faint)' }}>
         隐私提示：出生资料保存在当前设备，且未加密。共用设备请及时清除。
