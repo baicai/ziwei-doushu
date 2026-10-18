@@ -110,7 +110,7 @@ export default function TimeNav({
         >
           <button
             onClick={() => onViewChange('liunian')}
-            className="text-[10px] font-medium flex-1 text-center"
+            className="text-[11px] font-medium flex-1 min-h-10 text-center"
             style={{ color: view === 'liunian' ? 'var(--t-gold)' : 'var(--t-faint)' }}
           >
             流年
@@ -119,7 +119,7 @@ export default function TimeNav({
           <div className="flex items-center gap-0.5">
             <button
               onClick={e => { e.stopPropagation(); onYearChange(liunianYear - 1); if (view !== 'liunian') onViewChange('liunian'); }}
-              className="text-[9px] w-4 h-4 flex items-center justify-center rounded"
+              className="text-[13px] w-8 h-10 flex items-center justify-center rounded"
               style={{ color: 'var(--t-faint)' }}
             >
               ‹
@@ -180,7 +180,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className="flex-1 py-1.5 text-[10px] font-medium rounded-lg transition-all duration-200"
+      className="flex-1 min-h-11 py-2 text-[10px] sm:text-[11px] font-medium rounded-lg transition-all duration-200"
       style={{
         background: active ? 'rgba(212,168,67,0.12)' : 'transparent',
         color: active ? 'var(--t-gold)' : 'var(--t-faint)',
