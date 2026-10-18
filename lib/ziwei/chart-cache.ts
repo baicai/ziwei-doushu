@@ -5,6 +5,7 @@
  */
 import type { BirthInfo } from './types';
 import type { BirthFormState } from '@/components/BirthForm';
+import { resolveFormSolarDate } from './share';
 
 export const LAST_CHART_STORAGE_KEY = 'ziwei_chart_last_v1';
 
@@ -46,10 +47,13 @@ function isBirthInfo(value: unknown): value is BirthInfo {
 
 function isForm(value: unknown): value is BirthFormState {
   if (!isObject(value)) return false;
-  const { name, year, month, day, clockHour, clockMinute, gender, province, city, longitude, unknownTime } = value;
+  const { name, year, month, day, clockHour, clockMinute, gender, province, city, longitude, unknownTime, isLunar, isLeapMonth } = value;
   const parts = [name, year, month, day, clockHour, clockMinute, province, city];
   const shortStrings = parts.every(s => typeof s === 'string' && s.length <= 120);
   if (!shortStrings || typeof unknownTime !== 'boolean' ||
+    (isLunar !== undefined && typeof isLunar !== 'boolean') ||
+    (isLeapMonth !== undefined && typeof isLeapMonth !== 'boolean') ||
+    (isLeapMonth === true && isLunar !== true) ||
     (gender !== 'male' && gender !== 'female') ||
     typeof longitude !== 'number' || !Number.isFinite(longitude) ||
     longitude < -180 || longitude > 180) return false;
@@ -57,7 +61,7 @@ function isForm(value: unknown): value is BirthFormState {
   const h = Number(clockHour), min = Number(clockMinute);
   return /^\d{4}$/.test(year as string) && y >= 1900 && y <= 2100 &&
     /^\d{1,2}$/.test(month as string) && m >= 1 && m <= 12 &&
-    /^\d{1,2}$/.test(day as string) && dateExists(y, m, d) &&
+    /^\d{1,2}$/.test(day as string) && Boolean(resolveFormSolarDate(value as Pick<BirthFormState, 'year' | 'month' | 'day' | 'isLunar' | 'isLeapMonth'>)) &&
     /^\d{1,2}$/.test(clockHour as string) && h >= 0 && h <= 23 &&
     /^\d{1,2}$/.test(clockMinute as string) && min >= 0 && min <= 59;
 }
