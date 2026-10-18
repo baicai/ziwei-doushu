@@ -153,7 +153,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
   };
 
   return (
-    <section className="flex flex-col min-w-0 min-h-[480px] rounded-xl overflow-hidden card-glass" aria-label="命盘解读">
+    <section className="flex flex-col min-w-0 min-h-[420px] rounded-xl overflow-hidden card-glass" aria-label="命盘解读">
       <header className="flex-shrink-0 px-3 pt-3 pb-2.5" style={{ borderBottom: '1px solid var(--t-border)' }}>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
           <h2 className="text-[14px] font-semibold" style={{ color: 'var(--t-text)' }}>命盘解读</h2>
@@ -168,7 +168,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
               type="button"
               onClick={() => showTopic(topic.key)}
               aria-pressed={activeTopic === topic.key}
-              className="rounded-lg py-2 text-[11px] font-medium transition-colors"
+              className="rounded-lg min-h-11 py-2 text-[12px] font-medium transition-colors"
               style={{
                 color: activeTopic === topic.key ? 'var(--t-gold)' : 'var(--t-text2)',
                 background: activeTopic === topic.key ? 'rgba(212,168,67,0.12)' : 'var(--t-card)',
@@ -181,7 +181,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 min-h-[260px] max-h-[680px] overflow-y-auto p-3 space-y-4">
+      <div ref={scrollRef} className="flex-1 min-h-[260px] max-h-[60vh] xl:max-h-[680px] overflow-y-auto p-3 space-y-4">
         {timeView !== 'mingpan' && (() => {
           const evidence = selectedTimeReading(chart, timeView, liunianYear ?? new Date().getFullYear());
           return evidence && <section className="rounded-lg p-3" style={{ border: '1px solid var(--t-border)', background: 'var(--t-card)' }}>
@@ -214,15 +214,15 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
             maxLength={120}
             placeholder="输入事业、感情等关键词查专题"
             aria-label="检索离线解读专题"
-            className="min-w-0 flex-1 rounded-lg px-3 py-2 text-[11px] focus:outline-none"
+            className="min-w-0 flex-1 rounded-lg px-3 py-3 text-[16px] focus:outline-none"
             style={{ background: 'var(--t-card)', border: '1px solid var(--t-border)', color: 'var(--t-text)' }}
           />
-          <button type="submit" disabled={!input.trim()} className="rounded-lg px-3 text-[11px] disabled:opacity-40"
+          <button type="submit" disabled={!input.trim()} className="rounded-lg min-h-11 px-3 text-[12px] disabled:opacity-40"
             style={{ color: 'var(--t-gold)', border: '1px solid rgba(212,168,67,0.3)' }}>
             查专题
           </button>
         </form>
-        <button type="button" onClick={askAi} disabled={aiLoading} className="w-full rounded-lg px-3 py-2 text-[12px] font-medium disabled:opacity-50"
+        <button type="button" onClick={askAi} disabled={aiLoading} className="w-full rounded-lg min-h-11 px-3 py-3 text-[13px] font-medium disabled:opacity-50"
           style={{border:'1px solid rgba(212,168,67,0.4)',color:'var(--t-gold)',background:'rgba(212,168,67,0.1)'}}>
           {aiLoading ? '正在解读…' : 'AI 深度解读'}
         </button>
