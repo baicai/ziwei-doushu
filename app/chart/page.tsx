@@ -8,6 +8,7 @@ import InsightPanel from '@/components/InsightPanel';
 import TimeNav, { type TimeView } from '@/components/TimeNav';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import { formToBirthInfo } from '@/lib/ziwei/share';
+import { useHistory } from '@/lib/ziwei/history';
 import { LAST_CHART_STORAGE_KEY, buildCachedChart, parseCachedChart, type CachedChartInput } from '@/lib/ziwei/chart-cache';
 import type { BirthInfo, ZiweiChart, Palace } from '@/lib/ziwei/types';
 
@@ -37,6 +38,7 @@ export default function ChartPage() {
   const [notice, setNotice] = useState('');
   const [showingSample, setShowingSample] = useState(false);
   const draftRef = useRef<BirthFormState | null>(null);
+  const { history, save: saveHistory, remove: removeHistory, clear: clearHistory } = useHistory();
   const navRef = useRef<HTMLDivElement>(null);
   const [navHeight, setNavHeight] = useState(60);
 
@@ -93,6 +95,7 @@ export default function ChartPage() {
         return;
       }
       const entry = buildCachedChart(birthInfo, sourceForm);
+      saveHistory(sourceForm);
       try {
         window.localStorage.setItem(LAST_CHART_STORAGE_KEY, JSON.stringify(entry));
         setCached(entry);
@@ -102,6 +105,25 @@ export default function ChartPage() {
       }
     } catch {
       setNotice('排盘失败，请检查出生日期与时辰后重试。');
+    }
+  };
+
+  const openHistory = (form: BirthFormState) => {
+    try {
+      const birth = formToBirthInfo(form);
+      const generated = generateChart(birth);
+      const entry = buildCachedChart(birth, form);
+      window.localStorage.setItem(LAST_CHART_STORAGE_KEY, JSON.stringify(entry));
+      draftRef.current = form;
+      setCached(entry);
+      setChart(generated);
+      setShowingSample(false);
+      setSelectedPalace(null);
+      setView('mingpan');
+      setEditing(false);
+      setNotice('历史命盘已打开。');
+    } catch {
+      setNotice('这份历史出生资料暂时无法起盘，请检查日期与时间。');
     }
   };
 
@@ -185,6 +207,26 @@ export default function ChartPage() {
               清除保存资料
             </button>
           </div>
+        )}
+        {history.length > 0 && (
+          <section className="mt-5 rounded-xl p-4" aria-label="历史命盘"
+            style={{ border: '1px solid var(--t-border)', background: 'var(--t-card)' }}>
+            <div className="flex justify-between items-center gap-3 mb-3">
+              <h2 className="font-semibold text-sm" style={{ color: 'var(--t-text)' }}>历史命盘</h2>
+              <button type="button" onClick={clearHistory} className="min-h-11 text-xs underline"
+                style={{ color: 'var(--t-text2)' }}>清空历史</button>
+            </div>
+            <div className="space-y-2">
+              {history.map(item => <div key={item.id} className="flex items-center gap-2">
+                <button type="button" onClick={() => openHistory(item.form)}
+                  className="text-left min-h-11 flex-1 rounded-lg px-3 py-2 text-xs"
+                  style={{ color: 'var(--t-text)', border: '1px solid var(--t-border)' }}>{item.label}</button>
+                <button type="button" aria-label={`删除历史命盘：${item.label}`} onClick={() => removeHistory(item.id)}
+                  className="min-h-11 min-w-11 rounded-lg text-sm"
+                  style={{ color: 'var(--t-text2)', border: '1px solid var(--t-border)' }}>×</button>
+              </div>)}
+            </div>
+          </section>
         )}
         <p className="mt-5 text-xs leading-relaxed" style={{ color: 'var(--t-faint)' }}>
           隐私提示：出生资料仅保存在当前设备，且未加密。共用设备请及时清除。
