@@ -33,6 +33,7 @@ export default function ChartPage() {
   const [editing, setEditing] = useState(false);
   const [formRevision, setFormRevision] = useState(0);
   const [notice, setNotice] = useState('');
+  const [showingSample, setShowingSample] = useState(false);
   const draftRef = useRef<BirthFormState | null>(null);
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export default function ChartPage() {
         try {
           const generated = generateChart(stored.birthInfo);
           setChart(generated);
+          setShowingSample(false);
           setCached(stored);
           draftRef.current = stored.form;
         } catch {
@@ -65,6 +67,7 @@ export default function ChartPage() {
     try {
       const generated = generateChart(birthInfo);
       setChart(generated);
+      setShowingSample(false);
       setSelectedPalace(null);
       setEditing(false);
       setView('mingpan');
@@ -89,6 +92,7 @@ export default function ChartPage() {
   const showSample = () => {
     try {
       setChart(generateChart(SAMPLE_BIRTH));
+      setShowingSample(true);
       setSelectedPalace(null);
       setEditing(false);
       setNotice('当前是虚构示例命盘，不会覆盖你自己保存的出生资料。');
@@ -103,6 +107,7 @@ export default function ChartPage() {
       setCached(null);
       draftRef.current = null;
       setChart(null);
+      setShowingSample(false);
       setSelectedPalace(null);
       setEditing(false);
       setView('mingpan');
@@ -187,7 +192,7 @@ export default function ChartPage() {
           </button>
         </div>
         <span className="text-xs" style={{ color: 'var(--t-faint)' }}>
-          {cached ? '已保存于当前浏览器 · 刷新后自动恢复' : '本次为演示命盘，未写入本地缓存'}
+          {showingSample ? '正在查看虚构示例 · 不会覆盖已缓存资料' : cached ? '已保存于当前浏览器 · 刷新后自动恢复' : '当前命盘未保存到本地缓存'}
         </span>
       </div>
       {notice && (
