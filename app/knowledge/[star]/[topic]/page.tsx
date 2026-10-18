@@ -43,9 +43,9 @@ export async function generateMetadata({ params }: { params: Promise<{ star: str
   const data = getKnowledge(star, topic as TopicKey);
   if (!data.exists) return {};
 
-  const title = `${star}入${data.palaceName}宫 · ${data.topicLabel} · 倪海厦体系详解`;
+  const title = `${star}入${data.palaceName}宫 · ${data.topicLabel} · 紫微斗数资料`;
   const description = data.parsed.dingdiao
-    || `${star}入${data.palaceName}宫的紫微斗数解读 — 基于倪海厦《天纪》体系与古籍《紫微斗数全集》《骨髓赋》。`;
+    || `${star}入${data.palaceName}宫的紫微斗数解读 — 传统命盘文化资料，仅供学习。`;
 
   return {
     title,
@@ -85,7 +85,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ star
     '@type': 'Article',
     headline: `${star}入${data.palaceName}宫 · ${data.topicLabel}`,
     description: data.parsed.dingdiao,
-    author: { '@type': 'Organization', name: '紫微研究 · 倪海厦正宗' },
+    author: { '@type': 'Organization', name: '紫微研究' },
     publisher: {
       '@type': 'Organization',
       name: '紫微研究',
@@ -94,7 +94,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ star
     datePublished: '2026-04-28',
     dateModified: '2026-04-28',
     mainEntityOfPage: `${SITE_URL}/knowledge/${slug}/${topic}`,
-    articleSection: '紫微斗数 · 倪海厦体系',
+    articleSection: '紫微斗数 · 传统文化',
     keywords: [`紫微斗数`, star, data.palaceName, data.topicLabel].join(', '),
   };
 
@@ -109,7 +109,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ star
           ← 首页
         </Link>
         <div style={{ fontSize: '12px', color: 'var(--tx-3)', letterSpacing: '0.2em' }}>
-          倪师方法论 · 知识库
+          主星与宫位 · 知识库
         </div>
         <Link href="/chart" style={{ fontSize: '12px', color: 'var(--ac)', letterSpacing: '0.2em', textDecoration: 'none' }}>
           起盘 →
@@ -131,7 +131,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ star
         {/* 标题区 */}
         <header style={{ marginBottom: '36px' }}>
           <div style={{ fontSize: '11px', color: 'var(--tx-3)', letterSpacing: '0.25em', marginBottom: '8px' }}>
-            {data.topicLabel} · 倪海厦体系详解
+            {data.topicLabel} · 紫微斗数资料
           </div>
           <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 700, color: 'var(--tx-0)', letterSpacing: '0.1em', lineHeight: 1.2 }}>
             {star}入{data.palaceName}宫
@@ -189,7 +189,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ star
             想看你自己命盘的{data.topicLabel}？
           </div>
           <div style={{ fontSize: '12px', color: 'var(--tx-2)', marginBottom: '16px' }}>
-            输入生辰起盘 · 倪师正宗解读 · AI 答疑伴学
+            输入出生资料 · 查看命盘与专题解读
           </div>
           <Link href="/chart" style={{
             display: 'inline-block',
@@ -276,7 +276,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ star
 
       {/* 页脚 */}
       <footer style={{ borderTop: '1px solid rgba(184,146,42,0.15)', padding: '20px 24px', textAlign: 'center', fontSize: '11px', color: 'var(--tx-3)', letterSpacing: '0.1em' }}>
-        <div style={{ marginBottom: '6px' }}>紫微研究 · 基于倪海厦正宗体系 · 仅供学习参考</div>
+        <div style={{ marginBottom: '6px' }}>紫微研究 · 传统文化资料 · 仅供学习参考</div>
         <div style={{ opacity: 0.85 }}>本平台不构成任何医疗、投资、法律或重大决策建议</div>
       </footer>
     </div>
