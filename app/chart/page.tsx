@@ -71,7 +71,7 @@ export default function ChartPage() {
         <ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} />
         <InsightPanel chart={chart} selectedPalace={selectedPalace} />
       </div>
-      <WealthEvidencePanel chart={chart} />
+      <WealthEvidencePanel chart={chart} year={liunianYear} />
     </main>
   );
 }
