@@ -33,6 +33,7 @@ export default function ChartPage() {
   const [editing, setEditing] = useState(false);
   const [formRevision, setFormRevision] = useState(0);
   const [notice, setNotice] = useState('');
+  const releaseLabel = 'offline-six-topics-20261018-r2';
   const [showingSample, setShowingSample] = useState(false);
   const draftRef = useRef<BirthFormState | null>(null);
 
@@ -127,6 +128,7 @@ export default function ChartPage() {
   if (!chart || editing) {
     return (
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 20px 60px' }}>
+        <p data-release={releaseLabel} style={{ fontSize: 11, color: 'var(--t-faint)', marginBottom: 8 }}>离线六专题 · {releaseLabel}</p>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
           {editing ? '修改出生资料' : '紫微斗数排盘'}
         </h1>
@@ -179,6 +181,7 @@ export default function ChartPage() {
 
   return (
     <main style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 16px 60px' }}>
+      <p data-release={releaseLabel} style={{ fontSize: 11, color: 'var(--t-faint)', marginBottom: 8 }}>离线六专题 · {releaseLabel}</p>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 flex-wrap">
           <button type="button" onClick={() => { setEditing(true); setFormRevision(n => n + 1); }}
