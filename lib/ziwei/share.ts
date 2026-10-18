@@ -2,6 +2,7 @@ import type { BirthFormState } from '@/components/BirthForm';
 import type { BirthInfo } from './types';
 import { calculateTrueSolarTime, isValidGregorianDate, resolveZiweiDayOffset, shiftGregorianDate } from './true-solar-time';
 import { lunarToSolar } from './lunar-solar';
+import { localClockToBeijing } from './time-zone';
 
 /** Legacy longitude-only branch helper; production form uses calculateTrueSolarTime with EoT. */
 export function calcTrueSolarBranch(clockHour: number, clockMinute: number, longitude: number): number {
@@ -20,6 +21,16 @@ export function resolveFormSolarDate(form: Pick<BirthFormState, 'year' | 'month'
   return isValidGregorianDate(year, month, day) ? { year, month, day } : null;
 }
 
+/** 将当地出生时间换算成东八区钟表时间，用于全站统一的真太阳时计算。 */
+export function resolveFormBeijingClock(form: BirthFormState) {
+  const entered = resolveFormSolarDate(form);
+  if (!entered) throw new RangeError('出生日期无效');
+  const hour=Number(form.clockHour), minute=Number(form.clockMinute);
+  if(form.locationMode === 'overseas')
+    return localClockToBeijing(entered,hour,minute,form.timeZone || '');
+  return { ...entered,clockHour:hour,clockMinute:minute };
+}
+
 /** BirthFormState → BirthInfo
  *
  * 子时规则（传统排盘口径，可随流派调整）：
@@ -30,18 +41,23 @@ export function resolveFormSolarDate(form: Pick<BirthFormState, 'year' | 'month'
 export function formToBirthInfo(form: BirthFormState): BirthInfo {
   const entered = resolveFormSolarDate(form);
   if (!entered) throw new RangeError('出生日期无效，请检查日期或闰月');
-  const hourValue = Number(form.clockHour);
-  const minuteValue = Number(form.clockMinute);
+  const originalHour = Number(form.clockHour);
+  const originalMinute = Number(form.clockMinute);
+  const bjt = form.unknownTime ? { ...entered,clockHour:originalHour,clockMinute:originalMinute } : resolveFormBeijingClock(form);
+  const hourValue = bjt.clockHour;
+  const minuteValue = bjt.clockMinute;
   const hasClock = !form.unknownTime;
-  const hasLocation = Boolean(form.province && form.city && Number.isFinite(form.longitude));
+  const hasLocation = Boolean((form.locationMode === 'overseas' ? form.city : form.province && form.city)
+    && Number.isFinite(form.longitude));
   const solar = hasClock ? calculateTrueSolarTime({
-    ...entered,
+    year:bjt.year,month:bjt.month,day:bjt.day,
     clockHour: hourValue,
     clockMinute: minuteValue,
     longitude: hasLocation ? form.longitude : undefined,
   }) : null;
   const dayOffset = solar ? resolveZiweiDayOffset(solar, 'next-day') : 0;
-  const shifted = dayOffset ? shiftGregorianDate(entered, dayOffset) : entered;
+  const baseDate = {year:bjt.year,month:bjt.month,day:bjt.day};
+  const shifted = dayOffset ? shiftGregorianDate(baseDate, dayOffset) : baseDate;
   return {
     ...shifted,
     hour: solar?.branch ?? 0,
@@ -50,11 +66,12 @@ export function formToBirthInfo(form: BirthFormState): BirthInfo {
     province: form.province || undefined,
     city: form.city || undefined,
     longitude: hasLocation ? form.longitude : undefined,
+    timeZone: form.locationMode === 'overseas' ? form.timeZone : 'Asia/Shanghai',
     timePrecision: form.unknownTime ? 'unknown' : 'known',
     origInput: hasClock ? {
       ...entered,
-      clockHour: hourValue,
-      clockMinute: minuteValue,
+      clockHour: originalHour,
+      clockMinute: originalMinute,
     } : undefined,
   };
 }
@@ -63,6 +80,10 @@ export function formToBirthInfo(form: BirthFormState): BirthInfo {
 export function formToSearchParams(form: BirthFormState): URLSearchParams {
   const p = new URLSearchParams();
   if (form.name) p.set('n', form.name);
+  if (form.locationMode === 'overseas') {
+    p.set('loc','overseas');
+    if (form.timeZone) p.set('tz', form.timeZone);
+  }
   p.set('y', form.year);
   p.set('m', form.month);
   p.set('d', form.day);
@@ -102,6 +123,8 @@ export function searchParamsToForm(params: URLSearchParams): Partial<BirthFormSt
     province: params.get('p') || '',
     city: params.get('c') || '',
     longitude: parseFloat(params.get('lo') || '120'),
+    locationMode: params.get('loc') === 'overseas' ? 'overseas' : 'china',
+    timeZone: params.get('loc') === 'overseas' ? (params.get('tz') || '') : 'Asia/Shanghai',
     gender: params.get('g') === 'f' ? 'female' : 'male',
   };
 }
