@@ -6,7 +6,7 @@ const keys = budgetKeys(now);
 assert.equal(keys.daily, 'iziwei:ai:requests:day:2026-10-19');
 assert.equal(keys.monthly, 'iziwei:ai:requests:month:2026-10');
 
-const env: NodeJS.ProcessEnv = {
+const env: Record<string,string|undefined> = {
   AI_BUDGET_MODE: 'enforce',
   AI_DAILY_MAX_CALLS: '12',
   AI_MONTHLY_MAX_CALLS: '120',
