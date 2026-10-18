@@ -5,6 +5,7 @@ import BirthForm, { type BirthFormState } from '@/components/BirthForm';
 import ChartBoard from '@/components/ChartBoard';
 import MobilePalaceExplorer from '@/components/MobilePalaceExplorer';
 import InsightPanel from '@/components/InsightPanel';
+import ReportPanel from '@/components/ReportPanel';
 import TimeNav, { type TimeView } from '@/components/TimeNav';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import { formToBirthInfo } from '@/lib/ziwei/share';
@@ -286,6 +287,7 @@ export default function ChartPage() {
       {chart.birthInfo.timePrecision === 'unknown' && <p role="note" className="mb-3 rounded-xl px-3 py-3 text-sm" style={{ background:'var(--t-card)', border:'1px solid var(--t-border)',color:'var(--t-text2)' }}>
         出生时辰不详：当前仅按子时展示一张试排盘，宫位与分析可能变化，不能视为确定命盘。建议补充出生时间。
       </p>}
+      <ReportPanel chart={chart} year={liunianYear} />
       <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--t-faint)' }}>
         隐私提示：出生资料保存在当前设备，且未加密。共用设备请及时清除。
       </p>
