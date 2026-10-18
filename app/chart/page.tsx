@@ -126,7 +126,7 @@ export default function ChartPage() {
 
   if (!chart || editing) {
     return (
-      <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 20px 60px' }}>
+      <main style={{ maxWidth: 720, margin: '0 auto', padding: '24px 12px 64px' }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
           {editing ? '修改出生资料' : '紫微斗数排盘'}
         </h1>
@@ -178,7 +178,7 @@ export default function ChartPage() {
   }
 
   return (
-    <main style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 16px 60px' }}>
+    <main style={{ maxWidth: 1280, margin: '0 auto', padding: '16px 12px 72px' }}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 flex-wrap">
           <button type="button" onClick={() => { setEditing(true); setFormRevision(n => n + 1); }}
@@ -205,8 +205,8 @@ export default function ChartPage() {
       <TimeNav chart={chart} view={view} liunianYear={liunianYear}
         onViewChange={setView} onYearChange={setLiunianYear} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-5 mt-4 items-start">
-        <div className="min-w-0"><ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} timeView={view} liunianYear={liunianYear} /></div>
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-4 xl:gap-5 mt-4 items-start min-w-0">
+        <div className="min-w-0"><div className="overflow-x-auto overscroll-x-contain rounded-xl" aria-label="命盘，可左右滚动查看更多"><div className="min-w-[600px] sm:min-w-0"><ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} timeView={view} liunianYear={liunianYear} /></div></div></div>
         <div className="min-w-0"><InsightPanel chart={chart} selectedPalace={selectedPalace} liunianYear={liunianYear} timeView={view} /></div>
       </div>
 
