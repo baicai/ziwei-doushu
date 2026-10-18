@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { ZiweiChart, Palace } from '@/lib/ziwei/types';
 import type { TimeView } from './TimeNav';
 import WealthEvidencePanel from '@/components/WealthEvidencePanel';
+import AiSpecificityControl from '@/components/AiSpecificityControl';
+import { specificityLabel } from '@/lib/ai/specificity';
 import { selectedTimeReading } from '@/lib/ziwei/time-reading';
 import {
   OFFLINE_TOPICS,
@@ -26,6 +28,9 @@ interface InsightPanelProps {
   selectedSiHua?: SelectedSiHua | null;
   liunianYear?: number;
   timeView?: TimeView;
+  specificity?: number;
+  aiLab?: boolean;
+  onSpecificityChange?: (value:number)=>void;
 }
 
 interface Reading {
@@ -56,16 +61,12 @@ function ReadingContent({ content }: { content: string }) {
   );
 }
 
-/**
- * The open-source repository intentionally excludes /api/interpret.
- * A missing API must never appear as a functioning AI experience:
- * this component instead provides deterministic client-side explanations
- * grounded in actual chart values, with explicit limitations.
- */
-export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liunianYear, timeView = 'mingpan' }: InsightPanelProps) {
+/** Rule interpretations and optional DeepSeek follow-up analysis. */
+export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liunianYear,
+  timeView = 'mingpan', specificity=0, aiLab=false, onSpecificityChange }: InsightPanelProps) {
   const [activeTopic, setActiveTopic] = useState<OfflineTopic>('overview');
   const [input, setInput] = useState('');
-  const [aiTurns, setAiTurns] = useState<Array<{ question: string; answer: string }>>([]);
+  const [aiTurns, setAiTurns] = useState<Array<{ question: string; answer: string; specificity: number }>>([]);
   const [aiError, setAiError] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [readings, setReadings] = useState<Reading[]>(() => [
@@ -138,11 +139,11 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
 
   const askAi = async () => {
     if (aiLoading) return;
-    setAiError(''); setAiError(''); setAiLoading(true);
+    setAiError(''); setAiLoading(true);
     try {
       const response = await fetch('/api/interpret', {
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({birthInfo:chart.birthInfo,topic:activeTopic,question:input.trim().slice(0,500),
+        body:JSON.stringify({birthInfo:chart.birthInfo,topic:activeTopic,specificity,question:input.trim().slice(0,500),
           history:aiTurns.slice(-3).flatMap(turn => [
             {role:'user',content:turn.question.slice(0,500)},
             {role:'assistant',content:turn.answer.slice(0,600)},
@@ -155,7 +156,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
         : 'AI 解读暂时不可用，请稍后重试。',
       );
       if (!data || typeof data.answer !== 'string') throw new Error('AI 暂时未返回有效解读，请稍后重试。');
-      setAiTurns(prev => [...prev,{question:input.trim().slice(0,500) || '请解读当前专题',answer:data.answer}].slice(-4));
+      setAiTurns(prev => [...prev,{question:input.trim().slice(0,500) || '请解读当前专题',answer:data.answer,specificity}].slice(-4));
       setInput('');
     } catch (err) {setAiError(err instanceof Error ? err.message : 'AI 暂时不可用');}
     finally {setAiLoading(false);}
@@ -209,7 +210,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
         {aiTurns.map((turn, index) => <article key={index} className="rounded-lg p-3"
           style={{border:'1px solid var(--t-border)',background:'var(--t-card)'}}>
           <div className="text-[12px] font-semibold mb-1" style={{color:'var(--t-text)'}}>提问：{turn.question}</div>
-          <div className="text-[12px] font-semibold mb-2 mt-3" style={{color:'var(--t-gold)'}}>AI 深度解读</div>
+          <div className="text-[12px] font-semibold mb-2 mt-3" style={{color:'var(--t-gold)'}}>AI 深度解读{aiLab?' · '+turn.specificity+'/100（'+specificityLabel(turn.specificity)+'）':''}</div>
           <p className="text-[12px] leading-[1.8] whitespace-pre-wrap" style={{color:'var(--t-text2)'}}>{turn.answer}</p>
         </article>)}
         {readings.map((reading, index) => (
@@ -237,6 +238,8 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
             查专题
           </button>
         </form>
+        {aiLab && onSpecificityChange && <AiSpecificityControl
+          value={specificity} onChange={onSpecificityChange} />}
         <button type="button" onClick={askAi} disabled={aiLoading} className="w-full rounded-lg min-h-11 px-3 py-3 text-[13px] font-medium disabled:opacity-50"
           style={{border:'1px solid rgba(212,168,67,0.4)',color:'var(--t-gold)',background:'rgba(212,168,67,0.1)'}}>
           {aiLoading ? '正在解读…' : 'AI 深度解读'}
