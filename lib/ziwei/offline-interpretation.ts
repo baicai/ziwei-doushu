@@ -7,6 +7,7 @@
  * to predict actual health, relationships or financial outcomes.
  */
 import type { Palace, ZiweiChart, Star } from './types';
+import { topicSynthesis } from './topic-synthesis';
 
 export type OfflineTopic = 'overview' | 'personality' | 'love' | 'career' | 'wealth' | 'health';
 
@@ -142,10 +143,6 @@ export function offlineTopicAnalysis(chart: ZiweiChart, topic: OfflineTopic): st
   const meta = TOPIC_META[topic];
   const palace = findPalace(chart, meta.name);
   if (!palace) return '当前排盘未找到所需宫位，暂时无法生成规则解读。';
-  const related = meta.related.map(name => {
-    const p = findPalace(chart, name);
-    return p ? `${p.name}：${starList(p)}` : null;
-  }).filter(Boolean);
   const active = chart.daXians?.[chart.currentDaXianIndex];
   const overviewDetail = topic === 'overview'
     ? [
@@ -161,8 +158,7 @@ export function offlineTopicAnalysis(chart: ZiweiChart, topic: OfflineTopic): st
     '',
     basicPalace(chart, palace),
     '',
-    '**【专题关联宫位】**',
-    related.length ? related.join('；') + '。' : '暂无关联宫位数据。',
+    topicSynthesis(chart, topic),
     overviewDetail,
     '',
     '**【现实参考】**',
