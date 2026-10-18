@@ -33,7 +33,6 @@ export default function ChartPage() {
   const [editing, setEditing] = useState(false);
   const [formRevision, setFormRevision] = useState(0);
   const [notice, setNotice] = useState('');
-  const releaseLabel = 'offline-six-topics-20261018-r2';
   const [showingSample, setShowingSample] = useState(false);
   const draftRef = useRef<BirthFormState | null>(null);
 
@@ -55,10 +54,10 @@ export default function ChartPage() {
         }
       } else if (raw) {
         window.localStorage.removeItem(LAST_CHART_STORAGE_KEY);
-        setNotice('本地缓存格式无效，已忽略该记录。');
+        setNotice('保存的资料已失效，请重新填写。');
       }
     } catch {
-      setNotice('无法读取当前浏览器的本地缓存。你仍然可以起盘，但刷新后可能需要重新输入。');
+      setNotice('暂时无法自动保存资料，请留意。');
     } finally {
       setRestoring(false);
     }
@@ -74,16 +73,16 @@ export default function ChartPage() {
       setView('mingpan');
       const sourceForm = draftRef.current;
       if (!sourceForm) {
-        setNotice('命盘已生成，但未取得原始表单，因此未写入本地缓存。');
+        setNotice('命盘已生成，本次资料未能保存。');
         return;
       }
       const entry = buildCachedChart(birthInfo, sourceForm);
       try {
         window.localStorage.setItem(LAST_CHART_STORAGE_KEY, JSON.stringify(entry));
         setCached(entry);
-        setNotice('已在此浏览器保存出生资料；下次打开将自动恢复命盘。');
+        setNotice('出生资料已保存。');
       } catch {
-        setNotice('命盘已生成，但浏览器禁止本地存储；下次打开可能需要重新填写。');
+        setNotice('命盘已生成，本次资料未能保存。');
       }
     } catch {
       setNotice('排盘失败，请检查出生日期与时辰后重试。');
@@ -115,7 +114,7 @@ export default function ChartPage() {
       setFormRevision(n => n + 1);
       setNotice('已清除本页保存的出生资料和当前命盘。');
     } catch {
-      setNotice('清除本地缓存失败，请检查浏览器存储权限。');
+      setNotice('清除失败，请稍后重试。');
     }
   };
 
@@ -128,12 +127,11 @@ export default function ChartPage() {
   if (!chart || editing) {
     return (
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '32px 20px 60px' }}>
-        <p data-release={releaseLabel} style={{ fontSize: 11, color: 'var(--t-faint)', marginBottom: 8 }}>离线六专题 · {releaseLabel}</p>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
           {editing ? '修改出生资料' : '紫微斗数排盘'}
         </h1>
         <p style={{ color: 'var(--t-text2)', marginBottom: 18, fontSize: 13, lineHeight: 1.8 }}>
-          提交一次后，出生资料会保存在当前浏览器，下次访问自动恢复命盘；解读在浏览器内生成，无需 AI Key。
+          填写出生资料，查看专属命盘与解读。
         </p>
         {notice && (
           <p role="status" className="rounded-lg px-3 py-2 mb-4 text-[12px]"
@@ -168,12 +166,12 @@ export default function ChartPage() {
           <div className="mt-5 flex flex-wrap gap-3 items-center">
             <span className="text-xs" style={{ color: 'var(--t-faint)' }}>上次提交的资料已填入表单。</span>
             <button type="button" onClick={clearCache} className="text-xs underline" style={{ color: 'var(--t-text2)' }}>
-              清除本地缓存
+              清除保存资料
             </button>
           </div>
         )}
         <p className="mt-5 text-xs leading-relaxed" style={{ color: 'var(--t-faint)' }}>
-          隐私提示：出生资料以明文保存在当前网站的浏览器 localStorage，不同步到其他设备；共用电脑请使用“清除本地缓存”。
+          隐私提示：出生资料仅保存在当前设备，且未加密。共用设备请及时清除。
         </p>
       </main>
     );
@@ -181,7 +179,6 @@ export default function ChartPage() {
 
   return (
     <main style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 16px 60px' }}>
-      <p data-release={releaseLabel} style={{ fontSize: 11, color: 'var(--t-faint)', marginBottom: 8 }}>离线六专题 · {releaseLabel}</p>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 flex-wrap">
           <button type="button" onClick={() => { setEditing(true); setFormRevision(n => n + 1); }}
@@ -191,7 +188,7 @@ export default function ChartPage() {
           </button>
           <button type="button" onClick={clearCache} className="rounded-lg px-3 py-2 text-sm"
             style={{ border: '1px solid var(--t-border)', color: 'var(--t-text2)' }}>
-            清除本地缓存
+            清除保存资料
           </button>
         </div>
         <span className="text-xs" style={{ color: 'var(--t-faint)' }}>
@@ -214,7 +211,7 @@ export default function ChartPage() {
       </div>
 
       <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--t-faint)' }}>
-        出生资料仅存放于本浏览器的 localStorage（未加密），不跨设备同步；如使用共用电脑，请清除缓存。
+        隐私提示：出生资料保存在当前设备，且未加密。共用设备请及时清除。
       </p>
     </main>
   );
