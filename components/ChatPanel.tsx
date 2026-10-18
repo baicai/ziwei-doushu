@@ -51,9 +51,10 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
           question: text.slice(0, 500),
         }),
       });
-      const result = await res.json();
-      if (!res.ok || typeof result.answer !== 'string') {
-        throw new Error(typeof result.error === 'string' ? result.error : 'AI 解读暂时不可用');
+      const result = await res.json().catch(() => null);
+      if (!res.ok || !result || typeof result.answer !== 'string') {
+        throw new Error(res.status === 429 ? '请求较多，请稍后再试。'
+          : result && typeof result.error === 'string' ? result.error : 'AI 解读暂时不可用，请稍后重试。');
       }
       setMessages(prev => [...prev, { role: 'assistant', content: result.answer }]);
     } catch (e) {
