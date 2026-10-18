@@ -225,12 +225,12 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
         ))}
       </div>
 
-      {/* ── 姓名 ── */}
+      {/* ── 称呼（仅用于展示，不参与排盘） ── */}
       <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', fontSize: '11px', color: labelClr, marginBottom: '6px', letterSpacing: '0.05em' }}>姓名（可选）</label>
+        <label style={{ display: 'block', fontSize: '11px', color: labelClr, marginBottom: '6px', letterSpacing: '0.05em' }}>称呼（选填）</label>
         <input
           type="text"
-          placeholder="请输入姓名"
+          placeholder="例如：小明（昵称或化名均可）"
           value={form.name}
           onChange={e => setForm({ ...form, name: e.target.value })}
           style={inputStyle}
