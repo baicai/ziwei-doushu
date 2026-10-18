@@ -105,7 +105,7 @@ export default function ReportPanel({ chart, year }: {chart: ZiweiChart; year: n
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          birthInfo:chart.birthInfo,topic:'overview',
+          birthInfo:chart.birthInfo,topic:'overview',style:'plain',
           question:'请面向完全不懂紫微斗数的普通用户，用通俗中文解释这份命盘。重点说明整体特点、性格、工作、关系、金钱管理与生活提醒；明确哪些是传统象征，不用术语堆砌，不编造盘面事实，不做确定性预测。',
         }),
       });
