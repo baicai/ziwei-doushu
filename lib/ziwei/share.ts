@@ -1,7 +1,8 @@
 import type { BirthFormState } from '@/components/BirthForm';
 import type { BirthInfo } from './types';
+import { calculateTrueSolarTime, resolveZiweiDayOffset, shiftGregorianDate } from './true-solar-time';
 
-/** 根据北京时间 + 经度计算真太阳时时辰支 (0-11) */
+/** Legacy longitude-only branch helper; production form uses calculateTrueSolarTime with EoT. */
 export function calcTrueSolarBranch(clockHour: number, clockMinute: number, longitude: number): number {
   const clockMins = clockHour * 60 + clockMinute;
   const offset = (longitude - 120) * 4;
@@ -12,38 +13,38 @@ export function calcTrueSolarBranch(clockHour: number, clockMinute: number, long
 
 /** BirthFormState → BirthInfo
  *
- * 子时规则（倪海厦体系/三合派标准）：
- * · 23:00-23:59 = 晚子时，**按次日**排盘（日期 +1）
- * · 00:00-00:59 = 早子时，按本日排盘
+ * 子时规则（传统排盘口径，可随流派调整）：
+ * · 校正后的 23:00-23:59 = 晚子时，按次日排盘
+ * · 校正后的 00:00-00:59 = 早子时，按当天排盘
  * 这与「时辰支同为子(0)」并不冲突——子时分早晚两段，需要在日期上区分。
  */
 export function formToBirthInfo(form: BirthFormState): BirthInfo {
-  let y = parseInt(form.year) || 0;
-  let m = parseInt(form.month) || 0;
-  let d = parseInt(form.day) || 0;
-
-  // 晚子时（23:00-23:59）按次日处理：用 Date 对象自动处理月末/年末进位
-  if (!form.unknownTime) {
-    const clockHour = parseInt(form.clockHour) || 0;
-    if (clockHour === 23 && y > 0 && m > 0 && d > 0) {
-      const next = new Date(y, m - 1, d + 1);
-      y = next.getFullYear();
-      m = next.getMonth() + 1;
-      d = next.getDate();
-    }
-  }
-
-  const hour = form.unknownTime
-    ? 0
-    : calcTrueSolarBranch(parseInt(form.clockHour) || 0, parseInt(form.clockMinute) || 0, form.longitude);
+  const entered = { year: Number(form.year), month: Number(form.month), day: Number(form.day) };
+  const hourValue = Number(form.clockHour);
+  const minuteValue = Number(form.clockMinute);
+  const hasClock = !form.unknownTime;
+  const hasLocation = Boolean(form.province && form.city && Number.isFinite(form.longitude));
+  const solar = hasClock ? calculateTrueSolarTime({
+    ...entered,
+    clockHour: hourValue,
+    clockMinute: minuteValue,
+    longitude: hasLocation ? form.longitude : undefined,
+  }) : null;
+  const dayOffset = solar ? resolveZiweiDayOffset(solar, 'next-day') : 0;
+  const shifted = dayOffset ? shiftGregorianDate(entered, dayOffset) : entered;
   return {
-    year: y, month: m, day: d,
-    hour,
+    ...shifted,
+    hour: solar?.branch ?? 0,
     gender: form.gender,
     name: form.name || undefined,
     province: form.province || undefined,
     city: form.city || undefined,
-    longitude: form.province ? form.longitude : undefined,
+    longitude: hasLocation ? form.longitude : undefined,
+    origInput: hasClock ? {
+      ...entered,
+      clockHour: hourValue,
+      clockMinute: minuteValue,
+    } : undefined,
   };
 }
 
