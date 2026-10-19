@@ -14,7 +14,7 @@ const SIHUA = ['禄','权','科','忌'] as const;
 const EXTRA_SIHUA_STARS = ['文昌','文曲','左辅','右弼'] as const;
 const knownStars = [...MAJOR,...EXTRA_SIHUA_STARS].sort((a,b)=>b.length-a.length);
 const starPattern = knownStars.join('|');
-const palacePattern = PALACES.join('|');
+const palacePattern = PALACES.map(name=>name.replace(/宫$/, '')+'宫?').join('|');
 const majorPattern = MAJOR.join('|');
 const directPlacement = new RegExp('('+palacePattern+')(?:的)?\\s*(?:主星\\s*(?:是|为|有)|有|坐守|坐有|落有|见)\\s*('+majorPattern+')','g');
 const reversePlacement = new RegExp('('+majorPattern+')\\s*(?:坐守|落在|落入|位于|在)\\s*('+palacePattern+')','g');
@@ -37,8 +37,10 @@ export type FactualAudit = {
 };
 
 function normalizePalace(value:string) {
-  // Some charts call the same palace 仆役, while modern UI calls it 交友.
-  return value==='交友宫'?'仆役宫':value;
+  // iztro returns a mixture such as "命宫", "疾厄" and "仆役".
+  const base=value.replace(/宫$/, '');
+  // Some UIs call 仆役 交友. Both map to the same palace.
+  return base==='交友'?'仆役':base;
 }
 function describePalace(chart:ZiweiChart,name:string) {
   return chart.palaces.find(p=>normalizePalace(p.name)===normalizePalace(name));
