@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { reserveAiBudget } from '@/lib/ai/budget';
+import { aiRequestPayload, parseAiProvider, resolveAiProvider } from '@/lib/ai/providers';
 import { ACTIONABLE_GUIDANCE, parseSpecificity, specificityInstructions } from '@/lib/ai/specificity';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import { isValidGregorianDate } from '@/lib/ziwei/true-solar-time';
@@ -32,8 +33,6 @@ function allowedBirth(v: unknown): v is BirthInfo {
 }
 export async function POST(request: NextRequest) {
   if (!sameOrigin(request)) return NextResponse.json({error:'不允许跨站调用此演示接口'}, {status:403});
-  const key=process.env.DEEPSEEK_API_KEY;
-  if (!key) return NextResponse.json({error:'AI 尚未配置：请在 Vercel 设置服务端 DEEPSEEK_API_KEY。',code:'NOT_CONFIGURED'},{status:503});
   if (Number(request.headers.get('content-length')||0)>12000) return NextResponse.json({error:'请求过大'}, {status:413});
   let payload:Record<string,unknown>;
   try {
@@ -45,6 +44,10 @@ export async function POST(request: NextRequest) {
   } catch { return NextResponse.json({error:'请求资料无效'}, {status:400}); }
   if (!allowedBirth(payload.birthInfo)||typeof payload.topic!=='string'||!TOPICS.has(payload.topic))
     return NextResponse.json({error:'出生资料或专题无效'}, {status:400});
+  const providerId=parseAiProvider(payload.provider);
+  if(!providerId) return NextResponse.json({error:'不支持的模型服务商'}, {status:400});
+  const provider=resolveAiProvider(providerId);
+  if(!provider) return NextResponse.json({error:'所选模型尚未配置，暂不可用。',code:'PROVIDER_NOT_CONFIGURED'},{status:503});
   const question=typeof payload.question==='string'?payload.question.slice(0,500):'';
   const readingStyle=payload.style==='plain'?'plain':'standard';
   const specificity=parseSpecificity(payload.specificity);
@@ -90,18 +93,17 @@ export async function POST(request: NextRequest) {
         : 'AI 体验暂时不可用，请稍后再试。', code: exceeded ? 'AI_BUDGET_EXCEEDED' : 'AI_BUDGET_UNAVAILABLE' },
         { status: exceeded ? 429 : 503, headers: { 'Cache-Control': 'no-store' } });
     }
-    const configuredModel=process.env.DEEPSEEK_MODEL;
-    const model=configuredModel==='deepseek-v4-pro' ? configuredModel : 'deepseek-flash';
+    const model=provider.model;
     try {
-      response=await fetch('https://api.deepseek.com/chat/completions',{
+      response=await fetch(provider.endpoint,{
         method:'POST',
-        headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
-        body:JSON.stringify({model,thinking:{type:'disabled'},temperature:0.3,max_tokens:1200,stream:false,
-          messages:[
+        headers:{Authorization:'Bearer '+provider.apiKey,'Content-Type':'application/json'},
+        body:JSON.stringify(aiRequestPayload(provider,[
+
             {role:'system',content:controlledPrompt},
             ...history,
             {role:'user',content:JSON.stringify({topic,question,chart:{timePrecision:chart.birthInfo.timePrecision ?? 'known',lunarInfo:chart.lunarInfo,mingGongBranch:chart.mingGongBranch,wuxingJuName:chart.wuxingJuName,palaces:context},ruleEvidence:evidence,evidenceReferences:refs})}
-          ]}),signal:ctrl.signal,
+          ])),signal:ctrl.signal,
       });
     } finally {clearTimeout(timeout);}
     if(!response.ok) return NextResponse.json({error:response.status===429?'模型调用过于频繁，请稍后重试。':'AI 服务暂时不可用，请检查 API 额度或模型配置。'}, {status:502});
@@ -109,14 +111,14 @@ export async function POST(request: NextRequest) {
     const usage = data?.usage;
     if (usage && typeof usage.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number') {
       // Operational numbers only: do not log raw birth data or questions.
-      console.info('iziwei.ai.usage', JSON.stringify({model, specificity, inputTokens:usage.prompt_tokens, outputTokens:usage.completion_tokens,
+      console.info('iziwei.ai.usage', JSON.stringify({provider:provider.id,model, specificity, inputTokens:usage.prompt_tokens, outputTokens:usage.completion_tokens,
         budgetMode:budget.mode}));
     }
     const answer=data?.choices?.[0]?.message?.content;
     if(typeof answer!=='string'||!answer.trim()) return NextResponse.json({error:'模型未返回有效解读'}, {status:502});
     const audit=specificity>=20 ? evidenceAudit(answer.slice(0,8000),sourceCatalog) : null;
     const factualAudit=specificity>=20 ? checkAiChartFacts(answer.slice(0,8000),chart) : null;
-    return NextResponse.json({answer:answer.slice(0,8000),model:data.model||model,topic,source:'deepseek',specificity,
+    return NextResponse.json({answer:answer.slice(0,8000),provider:provider.id,model:data.model||model,topic,source:provider.id,specificity,
       evidenceAudit:audit ? {
         cited:audit.cited.map(e=>({id:e.id,fact:e.fact})),
         invalidIds:audit.invalidIds,
