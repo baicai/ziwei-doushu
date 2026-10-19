@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { reserveAiBudget } from '@/lib/ai/budget';
-import { aiRequestPayload, parseAiProvider, resolveAiProvider } from '@/lib/ai/providers';
+import { aiRequestPayload, parseAiProvider, resolveAiProvider, type AiChatMessage } from '@/lib/ai/providers';
 import { ACTIONABLE_GUIDANCE, parseSpecificity, specificityInstructions } from '@/lib/ai/specificity';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import { isValidGregorianDate } from '@/lib/ziwei/true-solar-time';
@@ -53,12 +53,12 @@ export async function POST(request: NextRequest) {
   const specificity=parseSpecificity(payload.specificity);
   // Only bounded conversational context is accepted; model facts always come from the rebuilt chart.
   const historyInput: unknown = payload.history;
-  const history = Array.isArray(historyInput) ? historyInput.slice(-6).flatMap(item => {
+  const history: AiChatMessage[] = Array.isArray(historyInput) ? historyInput.slice(-6).flatMap(item => {
     if (!item || typeof item !== 'object') return [];
     const role = (item as Record<string, unknown>).role;
     const content = (item as Record<string, unknown>).content;
     return (role === 'user' || role === 'assistant') && typeof content === 'string' && content.length <= 600
-      ? [{ role, content }] : [];
+      ? [{ role: role as 'user' | 'assistant', content }] : [];
   }) : [];
   const ip=(request.headers.get('x-forwarded-for')||'unknown').split(',')[0].trim();
   const now=Date.now();
