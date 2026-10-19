@@ -157,7 +157,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
         : 'AI 解读暂时不可用，请稍后重试。',
       );
       if (!data || typeof data.answer !== 'string') throw new Error('AI 暂时未返回有效解读，请稍后重试。');
-      setAiTurns(prev => [...prev,{question:input.trim().slice(0,500) || '请解读当前专题',answer:data.answer,specificity,audit:toEvidenceAudit(data.evidenceAudit)}].slice(-4));
+      setAiTurns(prev => [...prev,{question:input.trim().slice(0,500) || '请解读当前专题',answer:data.answer,specificity,audit:toEvidenceAudit(data.evidenceAudit,data.factualAudit)}].slice(-4));
       setInput('');
     } catch (err) {setAiError(err instanceof Error ? err.message : 'AI 暂时不可用');}
     finally {setAiLoading(false);}
