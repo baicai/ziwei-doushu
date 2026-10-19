@@ -6,7 +6,8 @@ import { OFFLINE_TOPICS, offlineTopicAnalysis } from '@/lib/ziwei/offline-interp
 import { selectedTimeReading } from '@/lib/ziwei/time-reading';
 import { buildPlainSections, buildPlainTextReport } from '@/lib/ziwei/plain-language-report';
 import AiSpecificityControl from '@/components/AiSpecificityControl';
-import AiEvidencePanel, {toEvidenceAudit, type AiEvidenceAuditResult} from '@/components/AiEvidencePanel';
+import AiEvidencePanel, {toEvidenceAudit} from '@/components/AiEvidencePanel';
+import {buildExperimentExport, REVIEW_LABELS, type ExperimentRun, type HumanReview} from '@/lib/ai/evaluation';
 import { specificityLabel } from '@/lib/ai/specificity';
 
 export function buildChartReport(chart: ZiweiChart, year: number): string {
@@ -32,8 +33,8 @@ export function buildChartReport(chart: ZiweiChart, year: number): string {
   return lines.join('\n');
 }
 
-function downloadText(content:string,filename:string) {
-  const file = new Blob([content], { type:'text/plain;charset=utf-8' });
+function downloadText(content:string,filename:string,mime='text/plain;charset=utf-8') {
+  const file = new Blob([content], { type:mime });
   const url = URL.createObjectURL(file);
   const a = document.createElement('a');
   a.href = url;
@@ -94,7 +95,8 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
   const [open,setOpen]=useState(true);
   const [version,setVersion]=useState<'plain'|'evidence'>('plain');
   const [notice,setNotice]=useState('');
-  const [aiRuns,setAiRuns]=useState<Array<{answer:string;specificity:number;audit:AiEvidenceAuditResult|null}>>([]);
+  const [aiRuns,setAiRuns]=useState<ExperimentRun[]>([]);
+  const [caseId,setCaseId]=useState('');
   const [aiBusy,setAiBusy]=useState(false);
   const sections=useMemo(()=>buildPlainSections(chart),[chart]);
   const plainText=useMemo(()=>buildPlainTextReport(chart,year),[chart,year]);
@@ -120,7 +122,8 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       if(!response.ok || !parsed || typeof parsed.answer!=='string')throw new Error(
         response.status===429?'当前 AI 体验次数较多，请稍后再试。':
         typeof parsed?.error==='string'?parsed.error:'AI 暂时不可用，请稍后再试。');
-      setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity,audit:toEvidenceAudit(parsed.evidenceAudit)}].slice(-4));
+      setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity,audit:toEvidenceAudit(parsed.evidenceAudit),
+        model:typeof parsed.model==='string'?parsed.model:'unknown',review:null,note:''}].slice(-4));
     }catch(e){setNotice(e instanceof Error?e.message:'AI 暂时不可用');}
     finally{setAiBusy(false);}
   };
@@ -219,6 +222,28 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
             <button type="button" onClick={()=>setAiRuns([])}
               className="min-h-11 text-xs underline" style={{color:'var(--t-text2)'}}>清空 AI 分析</button>
           </div>
+          {aiLab&&<div className="rounded-xl p-3 space-y-2" style={{border:'1px solid var(--t-border)'}}>
+            <label className="block text-xs" style={{color:'var(--t-text2)'}}>
+              匿名样本编号（选填，用于区分不同命盘的盲测记录）
+              <input type="text" maxLength={64} value={caseId}
+                onChange={e=>setCaseId(e.target.value)}
+                className="mt-2 w-full rounded-lg p-3 text-base"
+                placeholder="例如：CASE-001"
+                style={{background:'var(--t-card)',border:'1px solid var(--t-border)',color:'var(--t-text)'}} />
+            </label>
+            <button type="button" className="min-h-11 rounded-lg px-4 text-xs"
+              onClick={()=>downloadText(
+                JSON.stringify(buildExperimentExport(caseId,aiRuns,new Date().toISOString()),null,2),
+                '紫微研究_AI实验反馈.json','application/json;charset=utf-8')}
+              style={{border:'1px solid var(--t-border)',color:'var(--t-gold)'}}>
+              导出实验结果与主观反馈
+            </button>
+            <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
+              仅在你点击导出时生成本地文件，不自动上传反馈或保存到服务器。
+              文件不含出生日期、时间和地点，但 AI 内容和笔记本身可能包含私人信息，请检查后再分享。
+              该反馈只是初步记录，不能直接当作命盘准确率。
+            </p>
+          </div>}
           {aiRuns.map((run,i)=><article key={i} className="rounded-xl p-4 space-y-2"
             style={{background:'var(--t-surface)'}}>
             <h4 className="text-sm font-semibold" style={{color:'var(--t-gold)'}}>
@@ -226,6 +251,28 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
             </h4>
             <p className="text-sm whitespace-pre-wrap leading-7" style={{color:'var(--t-text2)'}}>{run.answer}</p>
             <AiEvidencePanel audit={run.audit}/>
+            {aiLab&&<div className="mt-2 rounded-lg p-3 space-y-2" style={{border:'1px solid var(--t-border)'}}>
+              <p className="text-xs font-medium" style={{color:'var(--t-text)'}}>
+                实验反馈：这次分析中有可以核对的具体描述吗？
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.entries(REVIEW_LABELS) as [HumanReview,string][]).map(([value,label])=>
+                  <button type="button" key={value} aria-pressed={run.review===value}
+                    onClick={()=>setAiRuns(prev=>prev.map((item,j)=>j===i?{...item,review:value}:item))}
+                    className="min-h-11 rounded-lg px-2 py-2 text-xs"
+                    style={{border:'1px solid var(--t-border)',
+                      background:run.review===value?'rgba(212,168,67,0.12)':'transparent',
+                      color:run.review===value?'var(--t-gold)':'var(--t-text2)'}}>{label}</button>)}
+              </div>
+              <label className="block text-xs" style={{color:'var(--t-text2)'}}>
+                可以记录具体例子或反例（选填，避免姓名和联系方式）
+                <textarea value={run.note} rows={2} maxLength={500}
+                  onChange={e=>setAiRuns(prev=>prev.map((item,j)=>j===i?{...item,note:e.target.value}:item))}
+                  className="mt-2 w-full resize-y rounded-lg p-2 text-sm"
+                  style={{background:'var(--t-card)',border:'1px solid var(--t-border)',color:'var(--t-text)'}}
+                  placeholder="例如：去年某次类似情境，我实际选择了相反做法。" />
+              </label>
+            </div>}
             <button type="button"
               onClick={()=>downloadText(run.answer,'紫微研究_AI分析_'+run.specificity+'.txt')}
               className="min-h-11 text-xs underline" style={{color:'var(--t-text2)'}}>保存这次 AI 分析</button>
