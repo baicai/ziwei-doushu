@@ -122,7 +122,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       if(!response.ok || !parsed || typeof parsed.answer!=='string')throw new Error(
         response.status===429?'当前 AI 体验次数较多，请稍后再试。':
         typeof parsed?.error==='string'?parsed.error:'AI 暂时不可用，请稍后再试。');
-      setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity,audit:toEvidenceAudit(parsed.evidenceAudit),
+      setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity,audit:toEvidenceAudit(parsed.evidenceAudit,parsed.factualAudit),
         model:typeof parsed.model==='string'?parsed.model:'unknown',review:null,note:''}].slice(-4));
     }catch(e){setNotice(e instanceof Error?e.message:'AI 暂时不可用');}
     finally{setAiBusy(false);}
