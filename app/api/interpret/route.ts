@@ -4,6 +4,7 @@ import { ACTIONABLE_GUIDANCE, parseSpecificity, specificityInstructions } from '
 import { generateChart } from '@/lib/ziwei/algorithm';
 import { isValidGregorianDate } from '@/lib/ziwei/true-solar-time';
 import { chartEvidence, evidenceAudit } from '@/lib/ziwei/chart-evidence';
+import { checkAiChartFacts } from '@/lib/ziwei/ai-fact-check';
 import type { BirthInfo } from '@/lib/ziwei/types';
 import { offlineTopicAnalysis, OFFLINE_TOPICS, type OfflineTopic } from '@/lib/ziwei/offline-interpretation';
 
@@ -114,12 +115,20 @@ export async function POST(request: NextRequest) {
     const answer=data?.choices?.[0]?.message?.content;
     if(typeof answer!=='string'||!answer.trim()) return NextResponse.json({error:'模型未返回有效解读'}, {status:502});
     const audit=specificity>=20 ? evidenceAudit(answer.slice(0,8000),sourceCatalog) : null;
+    const factualAudit=specificity>=20 ? checkAiChartFacts(answer.slice(0,8000),chart) : null;
     return NextResponse.json({answer:answer.slice(0,8000),model:data.model||model,topic,source:'deepseek',specificity,
       evidenceAudit:audit ? {
         cited:audit.cited.map(e=>({id:e.id,fact:e.fact})),
         invalidIds:audit.invalidIds,
         citationCount:audit.citationCount,
         scope:audit.scope,
+      } : null,
+      factualAudit: factualAudit ? {
+        checked:factualAudit.checked.slice(0,30),
+        matchingCount:factualAudit.matchingCount,
+        contradictionCount:factualAudit.contradictionCount,
+        scope:factualAudit.scope,
+        limitation:factualAudit.limitation,
       } : null},
       { headers: { 'Cache-Control': 'no-store' } });
   } catch {
