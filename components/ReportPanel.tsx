@@ -6,6 +6,7 @@ import { OFFLINE_TOPICS, offlineTopicAnalysis } from '@/lib/ziwei/offline-interp
 import { selectedTimeReading } from '@/lib/ziwei/time-reading';
 import { buildPlainSections, buildPlainTextReport } from '@/lib/ziwei/plain-language-report';
 import AiSpecificityControl from '@/components/AiSpecificityControl';
+import AiEvidencePanel, {toEvidenceAudit, type AiEvidenceAuditResult} from '@/components/AiEvidencePanel';
 import { specificityLabel } from '@/lib/ai/specificity';
 
 export function buildChartReport(chart: ZiweiChart, year: number): string {
@@ -93,7 +94,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
   const [open,setOpen]=useState(true);
   const [version,setVersion]=useState<'plain'|'evidence'>('plain');
   const [notice,setNotice]=useState('');
-  const [aiRuns,setAiRuns]=useState<Array<{answer:string;specificity:number}>>([]);
+  const [aiRuns,setAiRuns]=useState<Array<{answer:string;specificity:number;audit:AiEvidenceAuditResult|null}>>([]);
   const [aiBusy,setAiBusy]=useState(false);
   const sections=useMemo(()=>buildPlainSections(chart),[chart]);
   const plainText=useMemo(()=>buildPlainTextReport(chart,year),[chart,year]);
@@ -119,7 +120,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       if(!response.ok || !parsed || typeof parsed.answer!=='string')throw new Error(
         response.status===429?'当前 AI 体验次数较多，请稍后再试。':
         typeof parsed?.error==='string'?parsed.error:'AI 暂时不可用，请稍后再试。');
-      setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity}].slice(-4));
+      setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity,audit:toEvidenceAudit(parsed.evidenceAudit)}].slice(-4));
     }catch(e){setNotice(e instanceof Error?e.message:'AI 暂时不可用');}
     finally{setAiBusy(false);}
   };
@@ -224,6 +225,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
               DeepSeek · AI 分析{aiLab?' · '+run.specificity+'/100（'+specificityLabel(run.specificity)+'）':''}
             </h4>
             <p className="text-sm whitespace-pre-wrap leading-7" style={{color:'var(--t-text2)'}}>{run.answer}</p>
+            <AiEvidencePanel audit={run.audit}/>
             <button type="button"
               onClick={()=>downloadText(run.answer,'紫微研究_AI分析_'+run.specificity+'.txt')}
               className="min-h-11 text-xs underline" style={{color:'var(--t-text2)'}}>保存这次 AI 分析</button>
