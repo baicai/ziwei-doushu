@@ -7,9 +7,11 @@ const starPalace=chart.palaces.find(p=>p.stars.some(s=>s.name==='紫微'&&s.type
 const other=chart.palaces.find(p=>p.branch!==starPalace.branch)!;
 assert(starPalace&&other,'must have two palaces');
 const matched=checkAiChartFacts(starPalace.name+'有紫微。紫微位于'+starPalace.name+'。',chart);
-console.log('[fact-check diagnostic]',JSON.stringify({palace:starPalace.name,star:starPalace.stars.find(s=>s.name==='紫微'),checks:matched.checked,others:chart.palaces.map(p=>p.name)}));
 assert.equal(matched.contradictionCount,0);
 assert(matched.matchingCount>=1,'direct placement must be recognized');
+const withSuffix=checkAiChartFacts(starPalace.name.replace(/宫$/,'')+'宫有紫微。紫微位于'+starPalace.name.replace(/宫$/,'')+'宫。',chart);
+assert(withSuffix.matchingCount>=1,'both suffixed and unsuffixed palace spellings must resolve');
+assert.equal(withSuffix.contradictionCount,0);
 const error=checkAiChartFacts(other.name+'有紫微。紫微位于'+other.name+'。',chart);
 assert(error.contradictionCount>=1,'mislocated star must be detected');
 assert(error.checked.some(x=>x.expected.includes(starPalace.name)&&x.verdict==='contradicts-chart')===false,
