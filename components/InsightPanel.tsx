@@ -5,6 +5,7 @@ import type { ZiweiChart, Palace } from '@/lib/ziwei/types';
 import type { TimeView } from './TimeNav';
 import WealthEvidencePanel from '@/components/WealthEvidencePanel';
 import AiSpecificityControl from '@/components/AiSpecificityControl';
+import AiEvidencePanel, {toEvidenceAudit,type AiEvidenceAuditResult} from '@/components/AiEvidencePanel';
 import { specificityLabel } from '@/lib/ai/specificity';
 import { selectedTimeReading } from '@/lib/ziwei/time-reading';
 import {
@@ -66,7 +67,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
   timeView = 'mingpan', specificity=0, aiLab=false, onSpecificityChange }: InsightPanelProps) {
   const [activeTopic, setActiveTopic] = useState<OfflineTopic>('overview');
   const [input, setInput] = useState('');
-  const [aiTurns, setAiTurns] = useState<Array<{ question: string; answer: string; specificity: number }>>([]);
+  const [aiTurns, setAiTurns] = useState<Array<{ question: string; answer: string; specificity: number; audit:AiEvidenceAuditResult|null }>>([]);
   const [aiError, setAiError] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [readings, setReadings] = useState<Reading[]>(() => [
@@ -156,7 +157,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
         : 'AI 解读暂时不可用，请稍后重试。',
       );
       if (!data || typeof data.answer !== 'string') throw new Error('AI 暂时未返回有效解读，请稍后重试。');
-      setAiTurns(prev => [...prev,{question:input.trim().slice(0,500) || '请解读当前专题',answer:data.answer,specificity}].slice(-4));
+      setAiTurns(prev => [...prev,{question:input.trim().slice(0,500) || '请解读当前专题',answer:data.answer,specificity,audit:toEvidenceAudit(data.evidenceAudit)}].slice(-4));
       setInput('');
     } catch (err) {setAiError(err instanceof Error ? err.message : 'AI 暂时不可用');}
     finally {setAiLoading(false);}
@@ -212,6 +213,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
           <div className="text-[12px] font-semibold mb-1" style={{color:'var(--t-text)'}}>提问：{turn.question}</div>
           <div className="text-[12px] font-semibold mb-2 mt-3" style={{color:'var(--t-gold)'}}>AI 深度解读{aiLab?' · '+turn.specificity+'/100（'+specificityLabel(turn.specificity)+'）':''}</div>
           <p className="text-[12px] leading-[1.8] whitespace-pre-wrap" style={{color:'var(--t-text2)'}}>{turn.answer}</p>
+          <AiEvidencePanel audit={turn.audit}/>
         </article>)}
         {readings.map((reading, index) => (
           <article key={index} className="rounded-lg p-3" style={{ border: '1px solid var(--t-border)', background: 'var(--t-card)' }}>
