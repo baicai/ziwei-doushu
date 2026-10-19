@@ -15,9 +15,17 @@ export interface ExperimentRun {
     citationCount: number;
     scope: 'reference-existence-only';
     facts?: {
+      checked:Array<{
+        claim:string;
+        kind:'direct-star'|'empty-palace'|'natal-sihua';
+        verdict:'matches-chart'|'contradicts-chart';
+        evidenceId:string|null;
+        expected:string;
+      }>;
       matchingCount:number;
       contradictionCount:number;
       scope:'partial-natal-facts-only';
+      limitation:string;
     };
   } | null;
   review: HumanReview | null;
