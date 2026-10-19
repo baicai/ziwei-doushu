@@ -16,6 +16,12 @@ assert.equal(x.runs[0].humanReview,'too_generic');
 assert.equal(x.runs[1].humanReview,'contradicts');
 assert.deepEqual(x.runs[1].invalidReferenceIds,['P99']);
 assert.equal(x.runs[1].referenceCount,1);
+assert.equal(x.summary.length,2);
+assert.equal(x.summary[0].specificity,0);
+assert.equal(x.summary[0].tooGenericReviews,1);
+assert.equal(x.summary[1].specificity,100);
+assert.equal(x.summary[1].contradictedReviews,1);
+assert.equal(x.runs[1].parsedFactMatches,null);
 assert.equal(x.runs[0].referenceCount,null);
 assert.equal(x.birthDataIncluded,false);
 for(const prop of ['birthInfo','year','month','day','hour','longitude','timeZone','city','name','palaces'])
