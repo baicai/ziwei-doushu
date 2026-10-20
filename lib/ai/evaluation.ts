@@ -1,3 +1,4 @@
+import type { ReviewableHypothesis } from './hypotheses';
 /**
  * Opt-in, browser-only experimental review export.
  * Never includes birth date, time, location, name, or the full chart payload.
@@ -5,7 +6,14 @@
  * users must inspect the export before sharing it.
  */
 export type HumanReview = 'matches' | 'contradicts' | 'not_verifiable' | 'too_generic';
+export interface ReviewedHypothesis extends ReviewableHypothesis {
+  review:HumanReview|null;
+  note:string;
+}
 export interface ExperimentRun {
+  hypotheses?:ReviewedHypothesis[];
+  hypothesisFormatComplete?:boolean;
+  hypothesisFormatWarning?:string|null;
   specificity: number;
   model: string;
   answer: string;
@@ -60,6 +68,12 @@ export function buildExperimentExport(caseId:string,runs:ExperimentRun[],timesta
       humanReview:run.review,
       humanReviewLabel:run.review?REVIEW_LABELS[run.review]:null,
       notes:run.note.slice(0,500),
+      hypothesisFormatComplete:run.hypothesisFormatComplete ?? null,
+      hypotheses:(run.hypotheses ?? []).map(h=>({
+        id:h.id,claim:h.text,hasCounterexample:h.hasCounterexample,
+        hasChartReference:h.hasChartReference,review:h.review,
+        reviewLabel:h.review?REVIEW_LABELS[h.review]:null,note:h.note.slice(0,500),
+      })),
     })),
   };
 }
@@ -73,12 +87,17 @@ export function summarizeExperimentRuns(runs:ExperimentRun[]) {
     specificity:number; runs:number; matchingReferences:number;
     contradictedReferences:number; matchedReviews:number; contradictedReviews:number;
     tooGenericReviews:number; notVerifiableReviews:number; unansweredReviews:number;
+    structuredHypotheses:number; hypothesisMatched:number; hypothesisContradicted:number;
+    hypothesisUnverifiable:number; hypothesisTooGeneric:number; hypothesisUnanswered:number;
+    formatCompleteRuns:number;
   }>();
   for(const run of runs) {
     const group=groups.get(run.specificity)??{
       specificity:run.specificity,runs:0,matchingReferences:0,contradictedReferences:0,
       matchedReviews:0,contradictedReviews:0,tooGenericReviews:0,
       notVerifiableReviews:0,unansweredReviews:0,
+      structuredHypotheses:0,hypothesisMatched:0,hypothesisContradicted:0,
+      hypothesisUnverifiable:0,hypothesisTooGeneric:0,hypothesisUnanswered:0,formatCompleteRuns:0,
     };
     group.runs++;
     group.matchingReferences+=run.audit?.facts?.matchingCount??0;
@@ -89,6 +108,17 @@ export function summarizeExperimentRuns(runs:ExperimentRun[]) {
       case 'too_generic': group.tooGenericReviews++; break;
       case 'not_verifiable': group.notVerifiableReviews++; break;
       default:group.unansweredReviews++;
+    }
+    if(run.hypothesisFormatComplete)group.formatCompleteRuns++;
+    for(const h of run.hypotheses??[]) {
+      group.structuredHypotheses++;
+      switch(h.review) {
+        case 'matches':group.hypothesisMatched++;break;
+        case 'contradicts':group.hypothesisContradicted++;break;
+        case 'not_verifiable':group.hypothesisUnverifiable++;break;
+        case 'too_generic':group.hypothesisTooGeneric++;break;
+        default:group.hypothesisUnanswered++;
+      }
     }
     groups.set(run.specificity,group);
   }
