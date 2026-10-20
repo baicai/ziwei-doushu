@@ -34,4 +34,24 @@ const many=buildExperimentExport('X'.repeat(90),[
 ],'x');
 assert.equal(many.sampleId?.length,64);
 assert.equal(many.runs[0].notes.length,500);
+const hypotheses=[{
+  id:'H1' as const,
+  text:'情境：紧急变动；倾向：主动调整流程。反例：如果一直等待他人。',
+  hasCounterexample:true,hasChartReference:true,
+  review:'contradicts' as const,note:'实际情况与此相反',
+},{
+  id:'H2' as const,text:'情境：职责选择；倾向：偏好协作。反例：有时选择独立。',
+  hasCounterexample:true,hasChartReference:true,
+  review:'not_verifiable' as const,note:'',
+}];
+const withHypotheses=buildExperimentExport('CASE-2',[
+  {...runs[1],hypothesisFormatComplete:false,hypotheses},
+],'2026-10-20T12:00:00Z');
+assert.equal(withHypotheses.summary[0].structuredHypotheses,2);
+assert.equal(withHypotheses.summary[0].hypothesisContradicted,1);
+assert.equal(withHypotheses.summary[0].hypothesisUnverifiable,1);
+assert.equal(withHypotheses.summary[0].formatCompleteRuns,0);
+assert.equal(withHypotheses.runs[0].hypotheses[0].review,'contradicts');
+assert.equal(withHypotheses.runs[0].hypotheses[1].review,'not_verifiable');
+assert.equal(withHypotheses.runs[0].hypothesisFormatComplete,false);
 console.log('Opt-in experiment export and feedback regression passed');
