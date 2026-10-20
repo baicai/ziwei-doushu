@@ -10,6 +10,7 @@ import AiEvidencePanel, {toEvidenceAudit} from '@/components/AiEvidencePanel';
 import {buildExperimentExport, REVIEW_LABELS, type ExperimentRun, type HumanReview} from '@/lib/ai/evaluation';
 import { specificityLabel } from '@/lib/ai/specificity';
 import { parseReviewableHypotheses } from '@/lib/ai/hypotheses';
+import BlindEvaluationPanel from '@/components/BlindEvaluationPanel';
 
 export function buildChartReport(chart: ZiweiChart, year: number): string {
   const lines = [
@@ -324,6 +325,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
           </article>)}
         </div>}
       </div>
+      {aiLab&&<BlindEvaluationPanel birthInfo={chart.birthInfo} specificity={specificity}/>}
       {notice&&<p role="status" className="mt-3 text-xs" style={{color:'var(--t-text2)'}}>{notice}</p>}
       <p className="mt-4 text-xs leading-6" style={{color:'var(--t-faint)'}}>
         传统命盘是文化解释体系，不能证明个人性格、健康状况或未来事件。
