@@ -40,10 +40,11 @@ export default function BlindSummaryWorkbench(){
       }
       try {
         const raw:unknown=JSON.parse(await file.text());
-        if(Array.isArray(raw)) {
-          if(raw.length>500)throw new Error('单个文件最多包含 500 条记录。');
-          for(const item of raw)parsed.push(parseBlindExport(item));
-        }else parsed.push(parseBlindExport(raw));
+        // A bad row rejects this entire file; no silently partial import.
+        const fileRecords:ImportedBlindTrial[]=Array.isArray(raw)
+          ? (raw.length<=500?raw.map(item=>parseBlindExport(item)):(()=>{throw new Error('单个文件最多包含 500 条记录。');})())
+          : [parseBlindExport(raw)];
+        parsed.push(...fileRecords);
       }catch(error){
         errors.push(file.name.slice(0,100)+'：'+
           (error instanceof Error?error.message:'无法读取 JSON 文件。'));
