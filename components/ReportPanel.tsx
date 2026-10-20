@@ -9,6 +9,7 @@ import AiSpecificityControl from '@/components/AiSpecificityControl';
 import AiEvidencePanel, {toEvidenceAudit} from '@/components/AiEvidencePanel';
 import {buildExperimentExport, REVIEW_LABELS, type ExperimentRun, type HumanReview} from '@/lib/ai/evaluation';
 import { specificityLabel } from '@/lib/ai/specificity';
+import { parseReviewableHypotheses } from '@/lib/ai/hypotheses';
 
 export function buildChartReport(chart: ZiweiChart, year: number): string {
   const lines = [
@@ -122,8 +123,13 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       if(!response.ok || !parsed || typeof parsed.answer!=='string')throw new Error(
         response.status===429?'当前 AI 体验次数较多，请稍后再试。':
         typeof parsed?.error==='string'?parsed.error:'AI 暂时不可用，请稍后再试。');
+      const hypothesisCheck=specificity>=80?parseReviewableHypotheses(parsed.answer):null;
       setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity,audit:toEvidenceAudit(parsed.evidenceAudit,parsed.factualAudit),
-        model:typeof parsed.model==='string'?parsed.model:'unknown',review:null,note:''}].slice(-4));
+        model:typeof parsed.model==='string'?parsed.model:'unknown',review:null,note:'',
+        hypotheses:hypothesisCheck?.hypotheses.map(h=>({...h,review:null,note:''})),
+        hypothesisFormatComplete:hypothesisCheck?.complete,
+        hypothesisFormatWarning:hypothesisCheck?.warning,
+      }].slice(-4));
     }catch(e){setNotice(e instanceof Error?e.message:'AI 暂时不可用');}
     finally{setAiBusy(false);}
   };
@@ -251,6 +257,45 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
             </h4>
             <p className="text-sm whitespace-pre-wrap leading-7" style={{color:'var(--t-text2)'}}>{run.answer}</p>
             <AiEvidencePanel audit={run.audit}/>
+            {aiLab&&run.specificity>=80&&<details className="mt-3 rounded-xl p-3"
+              style={{border:'1px solid var(--t-border)',color:'var(--t-text2)'}} open>
+              <summary className="cursor-pointer min-h-11 text-sm font-medium" style={{color:'var(--t-text)'}}>
+                逐条核对分析中的假设（{run.hypotheses?.length??0}/3）
+              </summary>
+              <p className="text-xs leading-6 mt-1">先回忆真实事件再选择是否符合，尽量记录具体反例；无法判断时选择「无法验证」。这不是命理准确率。</p>
+              {!run.hypothesisFormatComplete&&<p role="status" className="text-xs leading-6 mt-2"
+                style={{color:'#f59e0b'}}>{run.hypothesisFormatWarning??'实验模板未完整生成，请勿将此轮标记为有效的标准化样本。'}</p>}
+              {(run.hypotheses??[]).map(h=><div key={h.id} className="rounded-lg p-3 space-y-2 mt-3"
+                style={{background:'var(--t-card)',border:'1px solid var(--t-border)'}}>
+                <h5 className="font-semibold text-sm" style={{color:'var(--t-gold)'}}>{h.id} · 待核验行为假设</h5>
+                <p className="whitespace-pre-wrap text-xs leading-6">{h.text}</p>
+                <p className="text-xs" style={{color:'var(--t-text2)'}}>
+                  依据编号：{h.hasChartReference?'已包含':'缺失'} · 反例／不适用条件：{h.hasCounterexample?'已描述':'缺失'}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.entries(REVIEW_LABELS) as [HumanReview,string][]).map(([value,label])=>
+                    <button type="button" key={value} aria-pressed={h.review===value}
+                      onClick={()=>setAiRuns(prev=>prev.map((item,j)=>j!==i?item:{
+                        ...item,hypotheses:item.hypotheses?.map(v=>v.id===h.id?{...v,review:value}:v)
+                      }))}
+                      className="min-h-11 rounded-lg px-2 text-xs"
+                      style={{border:'1px solid var(--t-border)',
+                        color:h.review===value?'var(--t-gold)':'var(--t-text2)',
+                        background:h.review===value?'rgba(212,168,67,0.12)':'transparent'}}>{label}</button>)}
+                </div>
+                <label className="block text-xs leading-6">
+                  事实或反例（可不填，请勿输入可识别个人身份的资料）
+                  <textarea rows={2} maxLength={500} value={h.note}
+                    onChange={e=>setAiRuns(prev=>prev.map((item,j)=>j!==i?item:{
+                      ...item,hypotheses:item.hypotheses?.map(v=>v.id===h.id?{...v,note:e.target.value}:v)
+                    }))}
+                    className="mt-2 w-full resize-y rounded-lg p-2 text-sm"
+                    style={{color:'var(--t-text)',background:'var(--t-surface)',border:'1px solid var(--t-border)'}}
+                    placeholder="写下具体做过的事情，或明确的相反情况" />
+                </label>
+              </div>)}
+            </details>}
+
             {aiLab&&<div className="mt-2 rounded-lg p-3 space-y-2" style={{border:'1px solid var(--t-border)'}}>
               <p className="text-xs font-medium" style={{color:'var(--t-text)'}}>
                 实验反馈：这次分析中有可以核对的具体描述吗？
