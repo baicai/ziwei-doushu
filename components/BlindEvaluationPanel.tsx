@@ -95,6 +95,10 @@ export default function BlindEvaluationPanel({birthInfo,specificity}:{
 
   return <section className="mt-4 rounded-xl p-3 sm:p-4 space-y-3"
     style={{border:'1px solid var(--t-border)',background:'var(--t-surface)'}}>
+    <div className="flex flex-wrap justify-end">
+      <a href="/lab/blind-results" className="inline-flex items-center min-h-11 text-xs underline"
+        style={{color:'var(--t-gold)'}}>打开盲评结果汇总工作台 →</a>
+    </div>
     <div className="flex flex-wrap justify-between gap-2 items-center">
       <div>
         <h3 className="font-semibold text-sm" style={{color:'var(--t-text)'}}>匿名命盘对照 · 实验</h3>
