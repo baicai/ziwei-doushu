@@ -56,7 +56,10 @@ export default function BlindEvaluationPanel({birthInfo,specificity}:{
   const [submittedAt,setSubmittedAt]=useState<string|null>(null);
   const [caseId,setCaseId]=useState('');
   const abortRef=useRef<AbortController|null>(null);
-  useEffect(()=>()=>abortRef.current?.abort(),[birthInfo]);
+  useEffect(()=>{
+    setTrial(null);setChoice(null);setSubmittedAt(null);setNotice('');setBusy(false);
+    return ()=>abortRef.current?.abort();
+  },[birthInfo]);
   const revealed=Boolean(trial&&choice&&submittedAt);
   const canCompare=birthInfo.timePrecision!=='unknown';
 
@@ -99,7 +102,14 @@ export default function BlindEvaluationPanel({birthInfo,specificity}:{
           先看两份解读再选出更像自己的一份，提交后才揭晓来源。
         </p>
       </div>
-      <button type="button" onClick={()=>setExpanded(v=>!v)} aria-expanded={expanded}
+      <button type="button" onClick={()=>{
+        if(expanded&&busy){
+          abortRef.current?.abort();
+          setBusy(false);
+          setNotice('已终止尚未完成的盲评；发出的单次请求可能已经计费。');
+        }
+        setExpanded(v=>!v);
+      }} aria-expanded={expanded}
         className="min-h-11 rounded-lg px-3 text-xs"
         style={{border:'1px solid var(--t-border)',color:'var(--t-gold)'}}>
         {expanded?'收起实验':'开始盲评实验'}
