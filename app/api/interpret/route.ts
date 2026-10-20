@@ -6,6 +6,7 @@ import { generateChart } from '@/lib/ziwei/algorithm';
 import { isValidGregorianDate } from '@/lib/ziwei/true-solar-time';
 import { chartEvidence, evidenceAudit } from '@/lib/ziwei/chart-evidence';
 import { checkAiChartFacts } from '@/lib/ziwei/ai-fact-check';
+import { HYPOTHESIS_FORMAT_INSTRUCTIONS, parseReviewableHypotheses } from '@/lib/ai/hypotheses';
 import type { BirthInfo } from '@/lib/ziwei/types';
 import { offlineTopicAnalysis, OFFLINE_TOPICS, type OfflineTopic } from '@/lib/ziwei/offline-interpretation';
 
@@ -79,7 +80,8 @@ export async function POST(request: NextRequest) {
       ? '\\n你必须为每条明确涉及星曜、宫位或四化的论断标注对应的命盘事实来源，格式是[依据:P3]或[依据:P3:S0]；多个可写[依据:P3,P9]。编号只能使用所附证据目录中真实存在的 ID。不要编造证据编号。编号只验证盘面事实引用，绝不等于结论已被科学证实。'
       : '';
     const controlledPrompt=systemPrompt+'\\n'+ACTIONABLE_GUIDANCE+
-      (specificity>0?'\\n'+specificityInstructions(specificity):'')+auditInstruction;
+      (specificity>0?'\\n'+specificityInstructions(specificity):'')+auditInstruction+
+      (specificity>=80?'\n'+HYPOTHESIS_FORMAT_INSTRUCTIONS:'');
     const context=chart.palaces.map(p=>({name:p.name,branch:p.branch,stem:p.stem,stars:p.stars.map(s=>({name:s.name,type:s.type,siHua:s.siHua,brightness:s.brightnessRaw}))}));
     const refs=specificity>=20 ? sourceCatalog.map(e=>({id:e.id,fact:e.fact})) : undefined;
     const ctrl=new AbortController();
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
     if(typeof answer!=='string'||!answer.trim()) return NextResponse.json({error:'模型未返回有效解读'}, {status:502});
     const audit=specificity>=20 ? evidenceAudit(answer.slice(0,8000),sourceCatalog) : null;
     const factualAudit=specificity>=20 ? checkAiChartFacts(answer.slice(0,8000),chart) : null;
+    const hypothesisFormat=specificity>=80 ? parseReviewableHypotheses(answer.slice(0,8000)) : null;
     return NextResponse.json({answer:answer.slice(0,8000),provider:provider.id,model:data.model||model,topic,source:provider.id,specificity,
       evidenceAudit:audit ? {
         cited:audit.cited.map(e=>({id:e.id,fact:e.fact})),
@@ -125,6 +128,7 @@ export async function POST(request: NextRequest) {
         citationCount:audit.citationCount,
         scope:audit.scope,
       } : null,
+      hypothesisFormat,
       factualAudit: factualAudit ? {
         checked:factualAudit.checked.slice(0,30),
         matchingCount:factualAudit.matchingCount,
