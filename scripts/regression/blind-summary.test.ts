@@ -53,7 +53,7 @@ assert.equal(group100.targetB,2);
 assert.equal(summary.groups[0].targetShareOfDecisive,1);
 assert.equal(summary.groups[1].targetShareOfDecisive,0);
 assert(summary.warning.some(x=>x.includes('重复')));
-assert(summary.warning.some(x=>x.includes('小于 20')));
+assert(summary.warning.some(x=>x.includes('少于 20')));
 assert(summary.warning.some(x=>x.includes('匿名样本编号')));
 const csv=exportBlindSummaryCsv(summary);
 assert(csv.includes('specificity,runs,selected_target'));
