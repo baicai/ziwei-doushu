@@ -17,7 +17,7 @@ const CHOICES:{value:BlindChoice;label:string;detail:string}[]=[
   {value:'unsure',label:'无法判断',detail:'缺少足够具体的经历'},
 ];
 
-type AiAnswer={answer:string;model:string};
+type AiAnswer={answer:string;model:string;writingVersion:string};
 async function askDeepSeek(birthInfo:BirthInfo,specificity:number,signal:AbortSignal):Promise<AiAnswer> {
   const response=await fetch('/api/interpret',{
     method:'POST',signal,
@@ -34,7 +34,8 @@ async function askDeepSeek(birthInfo:BirthInfo,specificity:number,signal:AbortSi
       response.status===429?'当前请求次数较多，请稍后再试。':'模型分析未成功，请稍后重试。';
     throw new Error(error);
   }
-  return {answer:result.answer,model:typeof result.model==='string'?result.model:'unknown'};
+  return {answer:result.answer,model:typeof result.model==='string'?result.model:'unknown',
+    writingVersion:typeof result.writingVersion==='string'?result.writingVersion:'untracked'};
 }
 function downloadJson(value:unknown){
   const blob=new Blob([JSON.stringify(value,null,2)],{type:'application/json;charset=utf-8'});
@@ -83,8 +84,8 @@ export default function BlindEvaluationPanel({birthInfo,specificity}:{
       // Serial calls keep cost explicit and avoid one-button request bursts.
       const own=await askDeepSeek(target,specificity,abort.signal);
       const control=await askDeepSeek(synthetic,specificity,abort.signal);
-      if(own.model!==control.model)
-        throw new Error('两份解读使用了不同的模型版本，此次比较不成立，请重新开始。');
+      if(own.model!==control.model||own.writingVersion!==control.writingVersion)
+        throw new Error('两份解读使用了不同的模型或文案版本，不能公平比较，请重新开始。');
       const leakage=checkBlindAnswerLeakage([own.answer,control.answer],[target,synthetic]);
       if(!leakage.usable)
         throw new Error('模型回答可能泄露出生信息或对照盘来源，已将此次盲评标为无效：'+leakage.flags.join('；')+'。');
