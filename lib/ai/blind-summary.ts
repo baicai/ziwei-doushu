@@ -10,6 +10,7 @@ export interface ImportedBlindTrial {
   caseId:string|null;
   specificity:number;
   model:string;
+  writingVersion:string;
   generatedAt:string;
   submittedAt:string;
   choice:BlindChoice;
@@ -34,6 +35,7 @@ export interface BlindGroupStats {
   unlabelledCount:number;
   repeatedCaseCount:number;
   models:string[];
+  writingVersions:string[];
 }
 export interface BlindSummary {
   total:number;
@@ -42,6 +44,7 @@ export interface BlindSummary {
   unlabelledCount:number;
   repeatedCaseCount:number;
   modelCount:number;
+  writingVersionCount:number;
   warning:string[];
 }
 const MAX_TRIALS=500;
@@ -84,13 +87,18 @@ export function parseBlindExport(value:unknown):ImportedBlindTrial {
   const model=value.panels[0].model as string;
   if(value.panels[1].model!==model)
     throw new Error('A/B 使用了不同的模型，不符合单模型对照条件。');
+  const writingVersions=value.panels.map((panel:Record<string,unknown>)=>panel.writingVersion??'untracked');
+  if(writingVersions.some(v=>typeof v!=='string'||v.length<1||v.length>80) ||
+    writingVersions[0]!==writingVersions[1])
+    throw new Error('同一轮 A/B 的文案版本不一致。');
+  const writingVersion=writingVersions[0] as string;
   const caseId=cleanCase(value.caseId);
   // Duplicate identity uses timestamps + source metadata, excluding raw model
   // text and any personal notes. Legitimate separate runs have new timestamps.
   const id=[value.generatedAt,value.submittedAt,caseId||'-',
-    value.specificity,model,choice,targetPosition].join('|');
+    value.specificity,model,writingVersion,choice,targetPosition].join('|');
   return {
-    id,caseId,specificity:value.specificity as number,model,
+    id,caseId,specificity:value.specificity as number,model,writingVersion,
     generatedAt:value.generatedAt,submittedAt:value.submittedAt,
     choice,targetPosition,outcome:assessBlindChoice(choice,targetPosition),
   };
@@ -123,6 +131,7 @@ function groupStats(specificity:number,records:ImportedBlindTrial[]):BlindGroupS
     targetB:records.filter(r=>r.targetPosition==='B').length,
     ...repeatedCaseStats(records),
     models:[...new Set(records.map(r=>r.model))].sort(),
+    writingVersions:[...new Set(records.map(r=>r.writingVersion))].sort(),
   };
 }
 export function summarizeBlindTrials(records:ImportedBlindTrial[]):BlindSummary {
@@ -134,12 +143,14 @@ export function summarizeBlindTrials(records:ImportedBlindTrial[]):BlindSummary 
   }
   const allCases=repeatedCaseStats(unique);
   const allModels=new Set(unique.map(r=>r.model));
+  const allWritingVersions=new Set(unique.map(r=>r.writingVersion));
   const warning:string[]=[];
   if(unique.length===0)warning.push('目前尚未导入有效的盲评结果。');
   if(unique.length>0&&unique.length<20)warning.push('总样本少于 20 轮，只适合探索性观察，不适合推断总体表现。');
   if(allCases.unlabelledCount)warning.push('部分记录没有匿名样本编号，无法确认是否来自同一位参与者。');
   if(allCases.repeatedCaseCount)warning.push('同一样本编号出现多轮结果；重复试验不能当作相互独立的参与者。');
   if(allModels.size>1)warning.push('记录混有不同模型版本，按明确度比较时存在模型差异影响。');
+  if(allWritingVersions.size>1)warning.push('记录混有不同文案提示词版本（旧版与新版不能直接比较）；请筛选同版数据再分析。');
   const result=[...groups.entries()].sort((a,b)=>a[0]-b[0]).map(([value,r])=>groupStats(value,r));
   for(const g of result) {
     if(g.count<10)warning.push('明确度 '+g.specificity+' 仅 '+g.count+' 轮，样本较少。');
@@ -148,7 +159,7 @@ export function summarizeBlindTrials(records:ImportedBlindTrial[]):BlindSummary 
   }
   return {
     total:unique.length,groups:result,...allCases,
-    modelCount:allModels.size,warning,
+    modelCount:allModels.size,writingVersionCount:allWritingVersions.size,warning,
   };
 }
 export function deduplicateBlindTrials(input:ImportedBlindTrial[]) {
