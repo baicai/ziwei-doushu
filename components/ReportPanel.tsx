@@ -10,6 +10,7 @@ import AiEvidencePanel, {toEvidenceAudit} from '@/components/AiEvidencePanel';
 import {buildExperimentExport, REVIEW_LABELS, type ExperimentRun, type HumanReview} from '@/lib/ai/evaluation';
 import { specificityLabel } from '@/lib/ai/specificity';
 import { parseReviewableHypotheses } from '@/lib/ai/hypotheses';
+import { DIRECT_USER_QUESTION } from '@/lib/ai/lay-writing';
 import BlindEvaluationPanel from '@/components/BlindEvaluationPanel';
 
 export function buildChartReport(chart: ZiweiChart, year: number): string {
@@ -116,7 +117,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           birthInfo:chart.birthInfo,topic:'overview',style:'plain',specificity,
-          question:'请面向完全不懂紫微斗数的普通用户，用通俗中文解释这份命盘。重点说明整体特点、性格、工作、关系、金钱管理与生活提醒；明确哪些是传统象征，不用术语堆砌，不编造盘面事实，不做确定性预测。',
+          question:DIRECT_USER_QUESTION,
         }),
       });
       const data:unknown=await response.json().catch(()=>null);
@@ -141,7 +142,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       <div className="space-y-1">
         <h2 className="text-base font-semibold" style={{color:'var(--t-text)'}}>我的命盘解读</h2>
         <p className="text-xs leading-5" style={{color:'var(--t-text2)'}}>
-          默认使用日常语言解释命盘，想深入研究再查看专业依据。
+          不讲难懂的命理词，直接说日常怎么做事、最容易在哪儿吃亏。
         </p>
       </div>
       <button type="button" aria-expanded={open} onClick={()=>setOpen(v=>!v)}
@@ -165,7 +166,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
           </button>)}
       </div>
       <p className="mb-4 text-xs leading-6" style={{color:'var(--t-text2)'}}>
-        {version==='plain'?'这是根据命盘规则写成的通俗解释，不是 AI 分析。':
+        {version==='plain'?'先看日常表现；想知道依据，再点每块下面的「为什么这样说」。':
           '这里保留实际星曜、宫位和计算依据，供需要详细核对的人阅读。'}
       </p>
       {chart.birthInfo.timePrecision==='unknown'&&<p role="note" className="mb-4 rounded-xl p-3 text-xs leading-6"
@@ -174,11 +175,12 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       </p>}
 
       {version==='plain'?<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {sections.map(section=><article key={section.key} className="rounded-xl p-4 space-y-3"
+        {sections.map(section=><article key={section.key}
+           className={`rounded-xl p-4 sm:p-5 space-y-3 ${section.key==='overview'?'md:col-span-2':''}`}
           style={{border:'1px solid var(--t-border)',background:'var(--t-surface)'}}>
           <h3 className="text-base font-semibold" style={{color:'var(--t-gold)'}}>{section.title}</h3>
-          <p className="text-sm leading-7" style={{color:'var(--t-text)'}}>{section.lead}</p>
-          <p className="text-sm leading-7" style={{color:'var(--t-text2)'}}>{section.observation}</p>
+          <p className="text-[15px] sm:text-base font-medium leading-8" style={{color:'var(--t-text)'}}>{section.lead}</p>
+          <p className="text-sm sm:text-[15px] leading-8" style={{color:'var(--t-text2)'}}>{section.observation}</p>
           <p className="text-sm leading-7" style={{color:'var(--t-text2)'}}>{section.suggestion}</p>
           <details className="pt-2 text-xs leading-6" style={{borderTop:'1px solid var(--t-border)',color:'var(--t-text2)'}}>
             <summary className="cursor-pointer py-2">为什么这样说？查看命盘依据</summary>
