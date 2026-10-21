@@ -9,6 +9,8 @@ import AiEvidencePanel, {toEvidenceAudit,type AiEvidenceAuditResult} from '@/com
 import { specificityLabel } from '@/lib/ai/specificity';
 import { selectedTimeReading } from '@/lib/ziwei/time-reading';
 import { buildLayTopicReading } from '@/lib/ziwei/plain-language-report';
+import { parseSixTopicAnswer } from '@/lib/ai/reading-sections';
+import { DIRECT_USER_QUESTION } from '@/lib/ai/lay-writing';
 import {
   OFFLINE_TOPICS,
   matchOfflineTopic,
@@ -37,6 +39,7 @@ interface InsightPanelProps {
 interface Reading {
   heading: string;
   content: string;
+  topic?: OfflineTopic;
 }
 
 function ReadingContent({ content }: { content: string }) {
@@ -70,17 +73,19 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
   const [aiTurns, setAiTurns] = useState<Array<{ question: string; answer: string; specificity: number; audit:AiEvidenceAuditResult|null }>>([]);
   const [aiError, setAiError] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
-  const [readings, setReadings] = useState<Reading[]>(() => [
-    { heading: '命格', content: buildLayTopicReading(chart, 'overview') },
-  ]);
+  const [readings, setReadings] = useState<Reading[]>(() =>
+    OFFLINE_TOPICS.map(t=>({topic:t.key,heading:t.label,content:buildLayTopicReading(chart,t.key)})));
   const lastPalace = useRef<string | null>(null);
   const lastSihua = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [mainSource,setMainSource]=useState<'rules'|'deepseek'>('rules');
+  const [mainAudit,setMainAudit]=useState<AiEvidenceAuditResult|null>(null);
 
   useEffect(() => {
     setAiError(''); setAiTurns([]);
     setActiveTopic('overview');
-    setReadings([{ heading: '命格', content: buildLayTopicReading(chart, 'overview') }]);
+    setReadings(OFFLINE_TOPICS.map(t=>({topic:t.key,heading:t.label,content:buildLayTopicReading(chart,t.key)})));
+    setMainSource('rules');setMainAudit(null);
     lastPalace.current = null;
     lastSihua.current = null;
   }, [chart]);
@@ -107,15 +112,23 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
     }].slice(-4));
   }, [chart, selectedSiHua]);
 
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [readings]);
-
   const showTopic = (topic: OfflineTopic) => {
-    setAiError(''); setAiTurns([]);
     setActiveTopic(topic);
-    const label = OFFLINE_TOPICS.find(t => t.key === topic)?.label ?? '专题';
-    setReadings([{ heading: label, content: buildLayTopicReading(chart, topic) }]);
+    const node=scrollRef.current?.querySelector<HTMLElement>('[data-reading-topic="'+topic+'"]');
+    if(node&&scrollRef.current){
+      scrollRef.current.scrollTo({top:node.offsetTop-scrollRef.current.offsetTop-8,behavior:'smooth'});
+    }
+  };
+  const onReadingScroll=()=>{
+    const scroller=scrollRef.current;
+    if(!scroller)return;
+    const elements=Array.from(scroller.querySelectorAll<HTMLElement>('[data-reading-topic]'));
+    let chosen:OfflineTopic='overview';
+    for(const node of elements){
+      if(node.getBoundingClientRect().top<=scroller.getBoundingClientRect().top+96)
+        chosen=node.dataset.readingTopic as OfflineTopic;
+    }
+    setActiveTopic(prev=>prev===chosen?prev:chosen);
   };
 
   const handleSearch = () => {
@@ -144,7 +157,8 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
     try {
       const response = await fetch('/api/interpret', {
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({birthInfo:chart.birthInfo,topic:activeTopic,style:'plain',specificity,question:input.trim().slice(0,500),
+        body:JSON.stringify({birthInfo:chart.birthInfo,topic:input.trim()?activeTopic:'overview',
+          style:'plain',specificity,question:input.trim().slice(0,500)||DIRECT_USER_QUESTION,
           history:aiTurns.slice(-3).flatMap(turn => [
             {role:'user',content:turn.question.slice(0,500)},
             {role:'assistant',content:turn.answer.slice(0,600)},
@@ -157,7 +171,20 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
         : 'AI 解读暂时不可用，请稍后重试。',
       );
       if (!data || typeof data.answer !== 'string') throw new Error('AI 暂时未返回有效解读，请稍后重试。');
-      setAiTurns(prev => [...prev,{question:input.trim().slice(0,500) || '请解读当前专题',answer:data.answer,specificity,audit:toEvidenceAudit(data.evidenceAudit,data.factualAudit)}].slice(-4));
+      const chapters=parseSixTopicAnswer(data.answer);
+      if(!input.trim()&&chapters.length>0){
+        setReadings(OFFLINE_TOPICS.map(t=>{
+          const ai=chapters.find(c=>c.key===t.key);
+          return {topic:t.key,heading:t.label,content:ai?.text||buildLayTopicReading(chart,t.key)};
+        }));
+        setMainAudit(toEvidenceAudit(data.evidenceAudit,data.factualAudit));
+        setMainSource('deepseek');
+        setActiveTopic('overview');
+        scrollRef.current?.scrollTo({top:0,behavior:'smooth'});
+      }else{
+        setAiTurns(prev=>[...prev,{question:input.trim().slice(0,500)||'命盘解读',
+          answer:data.answer,specificity,audit:toEvidenceAudit(data.evidenceAudit,data.factualAudit)}].slice(-4));
+      }
       setInput('');
     } catch (err) {setAiError(err instanceof Error ? err.message : 'AI 暂时不可用');}
     finally {setAiLoading(false);}
@@ -170,7 +197,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
           <h2 className="text-[14px] font-semibold" style={{ color: 'var(--t-text)' }}>命盘解读</h2>
         </div>
         <p className="text-[11px] leading-relaxed mb-3" style={{ color: 'var(--t-faint)' }}>
-          选择感兴趣的主题，或点击命盘中的宫位查看详细分析。
+          六个主题直接上下滑动阅读；顶部主题会跟着当前章节自动切换。
         </p>
         <div className="grid grid-cols-3 gap-1.5">
           {OFFLINE_TOPICS.map(topic => (
@@ -192,7 +219,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 min-h-[260px] max-h-[60vh] xl:max-h-[680px] overflow-y-auto p-3 space-y-4">
+      <div ref={scrollRef} onScroll={onReadingScroll} className="flex-1 min-h-[260px] max-h-[60vh] xl:max-h-[680px] overflow-y-auto p-3 space-y-4">
         {timeView !== 'mingpan' && (() => {
           const evidence = selectedTimeReading(chart, timeView, liunianYear ?? new Date().getFullYear());
           return evidence && <section className="rounded-lg p-3" style={{ border: '1px solid var(--t-border)', background: 'var(--t-card)' }}>
@@ -215,10 +242,19 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
           <p className="text-[14px] leading-[1.9] whitespace-pre-wrap" style={{color:'var(--t-text2)'}}>{turn.answer}</p>
           <AiEvidencePanel audit={turn.audit}/>
         </article>)}
+        {mainSource==='deepseek'&&<p className="text-xs leading-6"
+          style={{color:'var(--t-text2)'}}>正在显示 DeepSeek 通俗版；命盘的传统规则依据可在下方完整报告逐条展开。</p>}
+        {mainSource==='deepseek'&&<AiEvidencePanel audit={mainAudit}/>}
         {readings.map((reading, index) => (
-          <article key={index} className="rounded-lg p-3" style={{ border: '1px solid var(--t-border)', background: 'var(--t-card)' }}>
-            <div className="text-[11px] font-semibold mb-2" style={{ color: 'var(--t-text)' }}>{reading.heading}</div>
+          <article key={index} data-reading-topic={reading.topic}
+            className="rounded-lg p-3 scroll-mt-3" style={{ border: '1px solid var(--t-border)', background: 'var(--t-card)' }}>
+            <div className="text-[12px] font-semibold mb-2" style={{ color: 'var(--t-gold)' }}>{reading.heading}</div>
             <ReadingContent content={reading.content} />
+            {reading.topic&&<details className="mt-3 pt-2" style={{borderTop:'1px solid var(--t-border)'}}>
+              <summary className="cursor-pointer min-h-11 flex items-center text-xs"
+                style={{color:'var(--t-text2)'}}>为什么这样说？查看本章命盘描述</summary>
+              <ReadingContent content={buildLayTopicReading(chart,reading.topic)}/>
+            </details>}
           </article>
         ))}
       </div>
@@ -244,7 +280,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
           value={specificity} onChange={onSpecificityChange} />}
         <button type="button" onClick={askAi} disabled={aiLoading} className="w-full rounded-lg min-h-11 px-3 py-3 text-[13px] font-medium disabled:opacity-50"
           style={{border:'1px solid rgba(212,168,67,0.4)',color:'var(--t-gold)',background:'rgba(212,168,67,0.1)'}}>
-          {aiLoading ? '正在解读…' : 'AI 深度解读'}
+          {aiLoading?'正在生成…':input.trim()?'问 DeepSeek 这个问题':'生成 DeepSeek 六主题通俗版'}
         </button>
         <p className="text-[10px] leading-relaxed" style={{ color: 'var(--t-faint)' }}>
           内容仅供传统文化交流参考，不作为医疗、投资等决策依据。使用 AI 解读时，命盘资料将发送至第三方模型服务。
