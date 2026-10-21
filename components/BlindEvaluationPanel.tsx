@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { BirthInfo } from '@/lib/ziwei/types';
+import { checkBlindAnswerLeakage } from '@/lib/ai/blind-quality';
 import {
   assessBlindChoice, BLIND_COMPARISON_QUESTION, buildBlindComparison,
   exportBlindResult, minimalBlindBirth, syntheticControlBirth,
@@ -81,6 +82,9 @@ export default function BlindEvaluationPanel({birthInfo,specificity}:{
       const control=await askDeepSeek(synthetic,specificity,abort.signal);
       if(own.model!==control.model)
         throw new Error('两份解读使用了不同的模型版本，此次比较不成立，请重新开始。');
+      const leakage=checkBlindAnswerLeakage([own.answer,control.answer],[target,synthetic]);
+      if(!leakage.usable)
+        throw new Error('模型回答可能泄露出生信息或对照盘来源，已将此次盲评标为无效：'+leakage.flags.join('；')+'。');
       if(!abort.signal.aborted)
         setTrial(buildBlindComparison(own,control,targetFirst,specificity,new Date().toISOString()));
     }catch(error){
