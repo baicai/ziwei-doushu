@@ -21,6 +21,11 @@ assert.equal(sixTopicFormatComplete(answer),true);
 const incomplete=answer.replace('【健康】','【健康和身体】');
 assert.equal(sixTopicFormatComplete(incomplete),false);
 assert.equal(parseSixTopicAnswer(incomplete).length,5);
+const experimental=answer+'\n【待核验假设1】这一段是实验附录，不属于性格。';
+const topics=parseSixTopicAnswer(experimental);
+assert.equal(topics.length,6);
+assert.equal(topics[5].text.includes('待核验假设'),false,
+  'experimental appendix must not contaminate a user-facing chapter');
 const repeated=answer+'\n【命格】新的一段';
 assert.equal(parseSixTopicAnswer(repeated).length,6,'duplicate section must not create seventh item');
 const variant=answer.replace('【命格】','## **【命格】**');
