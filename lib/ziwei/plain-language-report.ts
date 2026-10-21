@@ -217,6 +217,22 @@ export function buildPlainSections(chart:ZiweiChart):PlainSection[] {
   });
 }
 
+/** Reading panel: direct lay summary, not an internal technical lecture. */
+export function buildLayTopicReading(chart:ZiweiChart,topic:OfflineTopic):string {
+  const section=buildPlainSections(chart).find(s=>s.key===topic);
+  if(!section)return '这一部分还没有足够资料，暂时不能解读。';
+  return [
+    '**【'+section.title+'】**',
+    section.lead,
+    section.observation,
+    '',
+    '**【你可以试试】**',
+    section.suggestion,
+    '',
+    '这只是传统命盘对应的一种行为描述，不是已经查证的个人经历。',
+  ].join('\n');
+}
+
 export function buildPlainTextReport(chart:ZiweiChart,year:number):string {
   const lines=[
     '紫微研究 · 命盘解读（通俗版）',
