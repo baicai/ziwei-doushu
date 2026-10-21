@@ -95,10 +95,17 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
     const identity = `${selectedPalace.branch}:${selectedPalace.name}`;
     if (lastPalace.current === identity) return;
     lastPalace.current = identity;
-    setReadings(prev => [...prev, {
-      heading: selectedPalace.name,
-      content: offlinePalaceAnalysis(chart, selectedPalace),
-    }].slice(-4));
+    setReadings(prev => {
+      const chapters=prev.filter(r=>r.topic);
+      const extras=prev.filter(r=>!r.topic);
+      return [...chapters,...extras,{
+        heading:selectedPalace.name,
+        content:offlinePalaceAnalysis(chart,selectedPalace),
+      }].slice(0,6).concat([...extras,{
+        heading:selectedPalace.name,
+        content:offlinePalaceAnalysis(chart,selectedPalace),
+      }].slice(-2));
+    });
   }, [chart, selectedPalace]);
 
   useEffect(() => {
@@ -106,17 +113,21 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
     const identity = `${selectedSiHua.view}:${selectedSiHua.starName}:${selectedSiHua.siHua}`;
     if (lastSihua.current === identity) return;
     lastSihua.current = identity;
-    setReadings(prev => [...prev, {
-      heading: `${selectedSiHua.starName}化${selectedSiHua.siHua}`,
-      content: offlineSihuaAnalysis(chart, selectedSiHua),
-    }].slice(-4));
+    setReadings(prev => {
+      const chapters=prev.filter(r=>r.topic);
+      const extras=prev.filter(r=>!r.topic);
+      return [...chapters,...extras,{
+        heading:`${selectedSiHua.starName}化${selectedSiHua.siHua}`,
+        content:offlineSihuaAnalysis(chart,selectedSiHua),
+      }].slice(-8);
+    });
   }, [chart, selectedSiHua]);
 
   const showTopic = (topic: OfflineTopic) => {
     setActiveTopic(topic);
     const node=scrollRef.current?.querySelector<HTMLElement>('[data-reading-topic="'+topic+'"]');
     if(node&&scrollRef.current){
-      scrollRef.current.scrollTo({top:node.offsetTop-scrollRef.current.offsetTop-8,behavior:'smooth'});
+      scrollRef.current.scrollTo({top:scrollRef.current.scrollTop+node.getBoundingClientRect().top-scrollRef.current.getBoundingClientRect().top-8,behavior:'smooth'});
     }
   };
   const onReadingScroll=()=>{
@@ -143,10 +154,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
     } else {
       setActiveTopic(topic);
       const label = OFFLINE_TOPICS.find(t => t.key === topic)?.label ?? '专题';
-      setReadings([{
-        heading: `${label} · 关键词匹配`,
-        content: `根据「${question}」，为你展示「${label}」专题：\n\n${buildLayTopicReading(chart, topic)}`,
-      }]);
+      showTopic(topic);
     }
     setInput('');
   };
