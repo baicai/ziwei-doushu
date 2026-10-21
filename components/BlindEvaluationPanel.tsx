@@ -59,6 +59,9 @@ export default function BlindEvaluationPanel({birthInfo,specificity}:{
   const abortRef=useRef<AbortController|null>(null);
   useEffect(()=>{
     setTrial(null);setChoice(null);setSubmittedAt(null);setNotice('');setBusy(false);
+    // One anonymous ID per chart in this tab. Subsequent 0/50/100 rounds
+    // share it; opening a different chart assigns a new ID automatically.
+    setCaseId('CASE-'+window.crypto.randomUUID().slice(0,8).toUpperCase());
     return ()=>abortRef.current?.abort();
   },[birthInfo]);
   const revealed=Boolean(trial&&choice&&submittedAt);
@@ -184,12 +187,16 @@ export default function BlindEvaluationPanel({birthInfo,specificity}:{
             一次选择没有统计意义，也不代表紫微斗数的人格或事件预测能力得到证实。
           </p>
           <label className="block text-xs leading-6" style={{color:'var(--t-text2)'}}>
-            匿名样本编号（选填，不要输入真实姓名）
+            匿名样本编号（自动生成；同一命盘的不同档位请沿用）
             <input value={caseId} onChange={e=>setCaseId(e.target.value)} maxLength={64}
               className="block mt-1 rounded-lg w-full p-3 text-base"
               style={{color:'var(--t-text)',background:'var(--t-surface)',border:'1px solid var(--t-border)'}}
               placeholder="例如 CASE-001"/>
           </label>
+          <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
+            建议保留此编号，方便把同一命盘的 0、50、100 档结果配对；切换到另一命盘会自动生成新编号。
+            页面刷新后也会重新生成，需要跨会话对照时请自行抄录并填回。不要用姓名或联系方式作为编号。
+          </p>
           <button type="button" onClick={()=>downloadJson(exportBlindResult(trial,choice,caseId,submittedAt))}
             className="min-h-11 rounded-lg px-3 text-sm"
             style={{border:'1px solid var(--t-border)',color:'var(--t-gold)'}}>
