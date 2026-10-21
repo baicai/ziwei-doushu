@@ -16,6 +16,7 @@ export interface ExperimentRun {
   hypothesisFormatWarning?:string|null;
   specificity: number;
   model: string;
+  writingVersion?: string;
   answer: string;
   audit: {
     cited: Array<{id:string;fact:string}>;
@@ -58,6 +59,7 @@ export function buildExperimentExport(caseId:string,runs:ExperimentRun[],timesta
     runs:runs.map((run,index)=>({
       runIndex:index+1,
       model:run.model,
+      writingVersion:run.writingVersion ?? 'untracked',
       specificity:run.specificity,
       // Keep user-authored notes short and retain no birth form or chart.
       answer:run.answer,
