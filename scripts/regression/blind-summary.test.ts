@@ -87,4 +87,16 @@ assert.equal(exportBlindSummaryCsv(empty).split('\r\n').length,1);
 assert.throws(()=>deduplicateBlindTrials(Array.from({length:501},(_,i)=>({
   ...parsed[0],id:'ID-'+i
 }))),/500/);
+const revised={
+  ...baseline,
+  panels:baseline.panels.map(p=>({...p,writingVersion:'lay-direct-v2'})),
+};
+const recent=parseBlindExport(revised);
+assert.equal(recent.writingVersion,'lay-direct-v2');
+assert.equal(parsed[0].writingVersion,'untracked');
+assert(summarizeBlindTrials([parsed[0],recent]).warning.some(w=>w.includes('文案提示词版本')));
+assert.throws(()=>parseBlindExport({...revised,panels:[
+  {...revised.panels[0],writingVersion:'lay-direct-v2'},
+  {...revised.panels[1],writingVersion:'lay-direct-v3'},
+]}),/文案版本/);
 console.log('Blind A/B import validation, deduplication, stats and no-answer retention regression passed');
