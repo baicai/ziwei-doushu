@@ -1,7 +1,8 @@
 /**
  * Display specificity is an editorial / evaluation parameter, not sampling
  * temperature, a probability, an epistemic confidence score or a property of
- * the underlying natal chart. Keep 0 identical to the legacy narrative level.
+ * the underlying natal chart. Zero means no EXTRA experimental prompt;
+ * the core public-writing prompt is independently versioned and may improve.
  */
 export const DEFAULT_SPECIFICITY = 0;
 export const MAX_SPECIFICITY = 100;
@@ -22,7 +23,7 @@ export function specificityBand(value: number): SpecificityBand {
 
 export function specificityLabel(value: number): string {
   const labels: Record<SpecificityBand,string> = {
-    baseline:'宽泛（默认）',
+    baseline:'直白解读（默认）',
     focused:'重点突出',
     observable:'具体行为',
     contrasting:'场景与反例',
