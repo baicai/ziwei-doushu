@@ -12,6 +12,8 @@ import { specificityLabel } from '@/lib/ai/specificity';
 import { parseReviewableHypotheses } from '@/lib/ai/hypotheses';
 import { DIRECT_USER_QUESTION } from '@/lib/ai/lay-writing';
 import BlindEvaluationPanel from '@/components/BlindEvaluationPanel';
+import AiChapterReader from '@/components/AiChapterReader';
+import { parseSixTopicAnswer } from '@/lib/ai/reading-sections';
 
 export function buildChartReport(chart: ZiweiChart, year: number): string {
   const lines = [
@@ -101,12 +103,18 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
   const [aiRuns,setAiRuns]=useState<ExperimentRun[]>([]);
   const [caseId,setCaseId]=useState('');
   const [aiBusy,setAiBusy]=useState(false);
+  const [deepBusy,setDeepBusy]=useState(false);
+  const [deepResult,setDeepResult]=useState<{answer:string;audit:ReturnType<typeof toEvidenceAudit>}|null>(null);
+  const [deepError,setDeepError]=useState('');
   const sections=useMemo(()=>buildPlainSections(chart),[chart]);
   const plainText=useMemo(()=>buildPlainTextReport(chart,year),[chart,year]);
   const evidenceText=useMemo(()=>buildChartReport(chart,year),[chart,year]);
   const visible=version==='plain'?plainText:evidenceText;
+  const latestAi=aiRuns[aiRuns.length-1];
+  const layChapters=useMemo(()=>parseSixTopicAnswer(latestAi?.answer||''),[latestAi?.answer]);
+  const deepChapters=useMemo(()=>parseSixTopicAnswer(deepResult?.answer||''),[deepResult?.answer]);
 
-  useEffect(()=>{setAiRuns([]);setNotice('');},[chart]);
+  useEffect(()=>{setAiRuns([]);setDeepResult(null);setDeepError('');setNotice('');},[chart]);
 
   const requestAi=async()=>{
     if(aiBusy)return;
@@ -137,6 +145,26 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
     finally{setAiBusy(false);}
   };
 
+  const requestDeep=async()=>{
+    if(deepBusy)return;
+    setDeepBusy(true);setDeepError('');
+    try {
+      const response=await fetch('/api/interpret',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({birthInfo:chart.birthInfo,topic:'overview',style:'plain',
+          readingTier:'deep',specificity:Math.max(20,specificity),
+          question:'请写六个主题的深度版白话解读，比基础版更具体：遇事怎么做、为何容易吃亏、怎样用过去经历核对，以及这周能怎么改。不要编造我的真实经历。'}),
+      });
+      const data:unknown=await response.json().catch(()=>null);
+      const result=data&&typeof data==='object'?data as Record<string,unknown>:null;
+      if(!response.ok||typeof result?.answer!=='string'||!result.answer.trim())
+        throw new Error(typeof result?.error==='string'?result.error:'深度解读未能生成，请稍后重试。');
+      setDeepResult({answer:result.answer,audit:toEvidenceAudit(result.evidenceAudit,result.factualAudit)});
+    }catch(e){setDeepError(e instanceof Error?e.message:'深度解读暂时不可用');}
+    finally{setDeepBusy(false);}
+  };
+
   return <section id="chart-report" className="mt-5 rounded-xl p-3 sm:p-5"
     style={{border:'1px solid var(--t-border)',background:'var(--t-card)'}}>
     <div className="flex flex-wrap justify-between items-center gap-3">
@@ -154,64 +182,95 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
     </div>
 
     {open&&<>
-      <div role="group" aria-label="选择报告阅读版本"
-        className="grid grid-cols-2 gap-2 mt-4 mb-3 rounded-xl p-1"
-        style={{background:'var(--t-surface)'}}>
-        {([{key:'plain',name:'通俗解读'},{key:'evidence',name:'专业依据'}] as const).map(item=>
-          <button key={item.key} type="button" aria-pressed={version===item.key}
-            onClick={()=>setVersion(item.key)}
-            className="min-h-11 rounded-lg text-sm font-medium"
-            style={{color:version===item.key?'var(--t-gold)':'var(--t-text2)',
-              background:version===item.key?'var(--t-card)':'transparent'}}>
-            {item.name}
-          </button>)}
-      </div>
-      <p className="mb-4 text-xs leading-6" style={{color:'var(--t-text2)'}}>
-        {version==='plain'?'先看日常表现；想知道依据，再点每块下面的「为什么这样说」。':
-          '这里保留实际星曜、宫位和计算依据，供需要详细核对的人阅读。'}
-      </p>
-      {chart.birthInfo.timePrecision==='unknown'&&<p role="note" className="mb-4 rounded-xl p-3 text-xs leading-6"
-        style={{border:'1px solid var(--t-border)',color:'var(--t-text)'}}>
-        出生时辰不详：当前只是一张试排盘，实际宫位和解释都可能改变。
+      {chart.birthInfo.timePrecision==='unknown'&&<p role="note"
+        className="mt-3 rounded-lg p-3 text-xs leading-6"
+        style={{border:'1px solid var(--t-border)',color:'var(--t-text2)'}}>
+        出生时辰不详：这些文字仅是试排参考，正式命盘可能不同。
       </p>}
-
-      {version==='plain'?<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {sections.map(section=><article key={section.key}
-           className={`rounded-xl p-4 sm:p-5 space-y-3 ${section.key==='overview'?'md:col-span-2':''}`}
-          style={{border:'1px solid var(--t-border)',background:'var(--t-surface)'}}>
-          <h3 className="text-base font-semibold" style={{color:'var(--t-gold)'}}>{section.title}</h3>
-          <p className="text-[15px] sm:text-base font-medium leading-8" style={{color:'var(--t-text)'}}>{section.lead}</p>
-          <p className="text-sm sm:text-[15px] leading-8" style={{color:'var(--t-text2)'}}>{section.observation}</p>
-          <p className="text-sm leading-7" style={{color:'var(--t-text2)'}}>{section.suggestion}</p>
-          <details className="pt-2 text-xs leading-6" style={{borderTop:'1px solid var(--t-border)',color:'var(--t-text2)'}}>
-            <summary className="cursor-pointer py-2">为什么这样说？查看命盘依据</summary>
-            <p className="pt-2">{section.evidence}</p>
-          </details>
-        </article>)}
-      </div>:<ProfessionalReport report={evidenceText}/>}
-
-      {version==='plain'&&<div className="mt-4 rounded-xl p-4 space-y-2"
-        style={{border:'1px solid var(--t-border)',background:'var(--t-surface)'}}>
-        <h3 className="font-semibold text-sm" style={{color:'var(--t-text)'}}>时间阶段怎么看？</h3>
-        <p className="text-sm leading-7" style={{color:'var(--t-text2)'}}>
-          {chart.daXians?.[chart.currentDaXianIndex]
-            ? `按这张盘的传统划分，${chart.daXians[chart.currentDaXianIndex].startAge}—${chart.daXians[chart.currentDaXianIndex].endAge} 岁的观察重点是「${chart.daXians[chart.currentDaXianIndex].palaceName}」。这只是阅读主题，不代表一定发生某件事。`
-            :'当前没有可用的大限资料。'}
-        </p>
+      <section className="mt-4 space-y-3">
+        <div className="flex flex-wrap gap-3 justify-between items-center">
+          <div>
+            <h3 className="text-base font-semibold" style={{color:'var(--t-text)'}}>六大主题 · 通俗版</h3>
+            <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
+              {layChapters.length?'正在阅读 DeepSeek 为这张盘生成的解读。':'先展示无需等待的命盘规则解读；生成后这里直接换成 DeepSeek 通俗版。'}
+            </p>
+          </div>
+          <button type="button" disabled={aiBusy} onClick={requestAi}
+            className="min-h-11 rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50"
+            style={{color:'var(--t-gold)',border:'1px solid rgba(212,168,67,.5)',
+              background:'rgba(212,168,67,.10)'}}>
+            {aiBusy?'正在生成通俗版…':layChapters.length?'重新生成 AI 通俗版':'生成 AI 通俗版（免费体验）'}
+          </button>
+        </div>
         <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
-          {year} 年的流年十二宫和历法年界仍在完善，暂不据此提供确定性的年度预测。
+          AI 解读需要你主动点击才会生成；点击后当前命盘资料会发送至 DeepSeek 并产生一次模型调用。
+          六个主题可以直接上下滑动，顶部标签自动跟随当前阅读位置；点某一条下面的「为什么这样说」即可查看对应命盘描述。
         </p>
-      </div>}
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" onClick={()=>downloadText(visible,version==='plain'?'紫微研究_通俗解读.txt':'紫微研究_专业依据.txt')}
-          className="min-h-11 rounded-lg px-4 text-sm"
-          style={{border:'1px solid var(--t-border)',color:'var(--t-text)'}}>下载当前版本</button>
-        <button type="button" onClick={()=>setNotice(printReport(visible)?'':'请允许弹出新窗口，再尝试打印或保存 PDF。')}
-          className="min-h-11 rounded-lg px-4 text-sm"
-          style={{border:'1px solid var(--t-border)',color:'var(--t-text)'}}>打印／保存 PDF</button>
-      </div>
-
+        {notice&&<p role="alert" className="text-xs" style={{color:'#f59e0b'}}>{notice}</p>}
+        {aiLab&&onSpecificityChange&&<AiSpecificityControl value={specificity} onChange={onSpecificityChange}/>}
+        <AiChapterReader fallback={sections} chapters={layChapters} audit={latestAi?.audit} variant="basic"/>
+        {latestAi&&layChapters.length<6&&<p role="status" className="text-xs leading-6"
+          style={{color:'#f59e0b'}}>
+          AI 这次只按格式生成了 {layChapters.length}/6 个主题；其余使用命盘规则资料补足，不会把其他主题的内容硬塞进去。
+        </p>}
+        {latestAi&&layChapters.length===0&&<details className="rounded-lg p-3"
+          style={{border:'1px solid var(--t-border)'}}>
+          <summary className="min-h-11 cursor-pointer text-sm">查看这次未按六主题格式生成的 AI 原文</summary>
+          <p className="text-sm leading-7 whitespace-pre-wrap">{latestAi.answer}</p>
+        </details>}
+        {latestAi&&<AiEvidencePanel audit={latestAi.audit}/>}
+        <div className="flex flex-wrap gap-3">
+          <button type="button" className="min-h-11 underline text-xs"
+            style={{color:'var(--t-text2)'}}
+            onClick={()=>downloadText(latestAi?.answer||plainText,'紫微研究_通俗版.txt')}>
+            保存通俗版
+          </button>
+          <button type="button" className="min-h-11 underline text-xs"
+            style={{color:'var(--t-text2)'}}
+            onClick={()=>setNotice(printReport(latestAi?.answer||plainText)?'':'浏览器拦截了打印窗口，请允许弹窗。')}>
+            打印／保存 PDF
+          </button>
+          <details className="min-h-11">
+            <summary className="cursor-pointer py-3 text-xs" style={{color:'var(--t-text2)'}}>查看完整传统排盘资料</summary>
+            <ProfessionalReport report={evidenceText}/>
+          </details>
+        </div>
+      </section>
+      <section className="mt-6 rounded-xl p-4 sm:p-5 space-y-3"
+        style={{border:'1px solid rgba(212,168,67,.35)',background:'var(--t-surface)'}}>
+        <div className="flex flex-wrap items-center gap-2 justify-between">
+          <h3 className="font-semibold text-base" style={{color:'var(--t-text)'}}>深度分析 · 进阶版</h3>
+          <span className="rounded-full px-3 py-1 text-xs font-semibold"
+            style={{background:'rgba(212,168,67,.12)',color:'var(--t-gold)'}}>当前限时免费</span>
+        </div>
+        <p className="text-sm leading-7" style={{color:'var(--t-text2)'}}>
+          不只是看你像什么人，还把六个方面容易出现的矛盾、具体生活情景、
+          对照反例和能尝试的做法讲透。将来可作为付费内容，目前完整开放，不需要支付。
+        </p>
+        <button type="button" disabled={deepBusy} onClick={requestDeep}
+          className="min-h-11 rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50"
+          style={{color:'var(--t-gold)',border:'1px solid rgba(212,168,67,.5)'}}>
+          {deepBusy?'正在生成深度版…':deepResult?'重新生成深度版':'免费解锁完整深度分析'}
+        </button>
+        <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
+          点击才会进行一次额外 DeepSeek 调用并发送命盘资料；目前不收费、没有付款或自动续费。
+          后续启用真实付费前，需要独立实现购买凭证与服务端权限校验。
+        </p>
+        {deepError&&<p role="alert" className="text-xs" style={{color:'#f59e0b'}}>{deepError}</p>}
+        {deepResult&&<>
+          <AiChapterReader fallback={sections} chapters={deepChapters} audit={deepResult.audit} variant="deep"/>
+          {deepChapters.length<6&&<p role="status" className="text-xs leading-6" style={{color:'#f59e0b'}}>
+            深度版只识别到 {deepChapters.length}/6 个主题，其余展示规则参考。
+          </p>}
+          {deepChapters.length===0&&<details><summary className="cursor-pointer min-h-11">
+            查看未按章节生成的深度版 AI 原文
+          </summary><p className="whitespace-pre-wrap leading-7 text-sm">{deepResult.answer}</p></details>}
+          <AiEvidencePanel audit={deepResult.audit}/>
+          <button type="button" onClick={()=>downloadText(deepResult.answer,'紫微研究_深度分析.txt')}
+            className="min-h-11 text-xs underline" style={{color:'var(--t-gold)'}}>保存完整深度分析</button>
+        </>}
+      </section>
+      {aiLab&&<>
       <div className="mt-5 rounded-xl p-4 space-y-2" style={{border:'1px solid var(--t-border)'}}>
         <h3 className="font-semibold text-sm" style={{color:'var(--t-text)'}}>想获得更详细的 AI 分析？</h3>
         <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
@@ -328,6 +387,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
           </article>)}
         </div>}
       </div>
+      </>}
       {aiLab&&<BlindEvaluationPanel birthInfo={chart.birthInfo} specificity={specificity}/>}
       {notice&&<p role="status" className="mt-3 text-xs" style={{color:'var(--t-text2)'}}>{notice}</p>}
       <p className="mt-4 text-xs leading-6" style={{color:'var(--t-faint)'}}>
