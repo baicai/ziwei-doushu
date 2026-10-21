@@ -15,6 +15,7 @@ export interface BlindPanel {
   label:BlindPosition;
   answer:string;
   model:string;
+  writingVersion?:string;
 }
 export interface BlindComparison {
   panels:[BlindPanel,BlindPanel];
@@ -52,8 +53,8 @@ export const BLIND_COMPARISON_QUESTION =
   '请仅从提供的传统命盘事实给出通俗中文解读，覆盖整体处事、工作、关系与金钱管理，并提供可在现实中检验或否定的行为假设和反例。不预测确定事件；不得猜测或泄露出生年份、年月日、时辰、地域、年龄、姓名、性别等身份线索。不要声明这份命盘是真实出生资料还是合成样本。不要将已发生的个人经历当作已知事实。';
 
 export function buildBlindComparison(
-  own:{answer:string;model:string},
-  synthetic:{answer:string;model:string},
+  own:{answer:string;model:string;writingVersion?:string},
+  synthetic:{answer:string;model:string;writingVersion?:string},
   targetFirst:boolean,
   specificity:number,
   generatedAt:string,
@@ -85,6 +86,7 @@ export function exportBlindResult(
     submittedAt,
     specificity:trial.specificity,
     models:[...new Set(trial.panels.map(x=>x.model))],
+    writingVersions:[...new Set(trial.panels.map(x=>x.writingVersion??'untracked'))],
     choice,
     targetPosition:trial.targetPosition,
     outcome,
@@ -92,6 +94,7 @@ export function exportBlindResult(
     controlType:'synthetic-generated-birth',
     birthDataIncluded:false,
     explanation:'自我匹配的弱盲评；合成对照命盘不是另一个真实人，单次选择不能推导命理预测准确率。导出包含 AI 文本，用户应检查个人隐私。',
-    panels:trial.panels.map(p=>({label:p.label,answer:p.answer,model:p.model})),
+    panels:trial.panels.map(p=>({label:p.label,answer:p.answer,model:p.model,
+      writingVersion:p.writingVersion??'untracked'})),
   };
 }
