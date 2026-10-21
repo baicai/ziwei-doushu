@@ -127,7 +127,8 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
         typeof parsed?.error==='string'?parsed.error:'AI 暂时不可用，请稍后再试。');
       const hypothesisCheck=specificity>=80?parseReviewableHypotheses(parsed.answer):null;
       setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity,audit:toEvidenceAudit(parsed.evidenceAudit,parsed.factualAudit),
-        model:typeof parsed.model==='string'?parsed.model:'unknown',review:null,note:'',
+        model:typeof parsed.model==='string'?parsed.model:'unknown',
+        writingVersion:typeof parsed.writingVersion==='string'?parsed.writingVersion:'untracked',review:null,note:'',
         hypotheses:hypothesisCheck?.hypotheses.map(h=>({...h,review:null,note:''})),
         hypothesisFormatComplete:hypothesisCheck?.complete,
         hypothesisFormatWarning:hypothesisCheck?.warning,
