@@ -22,7 +22,7 @@ assert.equal(specificityBand(80),'falsifiable');
 assert.equal(specificityBand(100),'falsifiable');
 assert.equal(specificityInstructions(0),'','baseline must not change description instructions');
 assert.equal(specificityInstructions(19),'','baseline band remains unchanged');
-assert.equal(specificityLabel(0),'宽泛（默认）');
+assert.equal(specificityLabel(0),'直白解读（默认）');
 for (const value of [20,40,60,80,100]) {
   const prompt=specificityInstructions(value);
   assert(prompt.includes('描述明确度不代表预测准确率'),'guard must prevent confidence inflation');
