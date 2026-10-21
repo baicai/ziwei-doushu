@@ -29,8 +29,8 @@ for(const starName of stars) {
   }
 }
 assert.equal(different.size,14,'all 14 main stars must lead to a distinct lay voice');
-assert(LAY_WRITING_VERSION.includes('v2'));
-for(const phrase of ['最简单','生活','具体','反例','编造','花钱','直接','不需要猜']) {
+assert(LAY_WRITING_VERSION.includes('v3'));
+for(const phrase of ['最简单','生活','具体','反例','编造','花钱','直接','不需要猜','同事拖着不交东西','过去一年','不同的生活情景']) {
   const combined=LAY_WRITING_PROMPT+'\n'+DIRECT_USER_QUESTION;
   assert(combined.includes(phrase),'AI plain-copy contract should cover '+phrase);
 }
