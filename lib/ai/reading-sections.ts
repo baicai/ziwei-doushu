@@ -19,7 +19,10 @@ export function parseSixTopicAnswer(answer:string):AiReadingSection[]{
     if(byLabel.has(label))continue;
     const begin=(found[i].index??0)+found[i][0].length;
     const end=found[i+1]?.index??answer.length;
-    const raw=answer.slice(begin,end).trim();
+    let raw=answer.slice(begin,end).trim();
+    // Experimental hypothesis appendix is not part of the last 性格 chapter.
+    const appendix=raw.search(/(?:^|\n)\s*(?:\*\*)?【(?:待核验假设[123]|假设[123]|可以怎么做|实验反馈)】/);
+    if(appendix>=0)raw=raw.slice(0,appendix).trim();
     if(!raw)continue;
     const referenceIds=Array.from(raw.matchAll(/\[依据:([^\]]+)\]/g)).flatMap(m=>
       m[1].split(',').map(x=>x.trim()).filter(x=>/^P\d+(?::S\d+)?$/.test(x)));
