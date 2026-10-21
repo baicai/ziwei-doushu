@@ -22,7 +22,7 @@ export interface PairedBlindSummary {
 
 /**
  * A diagnostic cohort table, not a statistical test. Pairs are identified
- * solely by a voluntary anonymous ID and exact model string.
+ * solely by a voluntary anonymous ID, exact model and writing revision.
  * For repeated runs in the same cell, the chronologically earliest is chosen
  * in advance to avoid result-dependent cherry-picking.
  */
@@ -33,7 +33,7 @@ export function summarizePairedBlindTrials(records:ImportedBlindTrial[]):PairedB
   const ordered=[...records].filter(r=>Boolean(r.caseId))
     .sort((a,b)=>a.generatedAt.localeCompare(b.generatedAt)||a.id.localeCompare(b.id));
   for(const record of ordered) {
-    const key=JSON.stringify([record.caseId,record.model]);
+    const key=JSON.stringify([record.caseId,record.model,record.writingVersion]);
     const slots=cohorts.get(key)??new Map<number,ImportedBlindTrial>();
     if(slots.has(record.specificity))repeatedCells++;
     else slots.set(record.specificity,record);
@@ -59,7 +59,7 @@ export function summarizePairedBlindTrials(records:ImportedBlindTrial[]):PairedB
     else unchangedDecisive++;
   }
   const notes=[
-    '本页配对只用匿名样本编号和模型名匹配，不能确认不同文件确实来自同一命盘、同一参与者。',
+    '本页配对使用匿名样本编号、模型名和文案版本匹配，不能确认不同文件确实来自同一命盘、同一参与者。',
     '每个明确度只选同组最早的一轮；重复测试及相同参与者的结果不视作独立样本。',
   ];
   if(complete.length===0)notes.push('还没有同一匿名编号、同一模型的 0／50／100 三档完整组合。');
