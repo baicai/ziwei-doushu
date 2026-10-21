@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { summarizePairedBlindTrials } from '@/lib/ai/blind-cohorts';
 import {
   deduplicateBlindTrials, exportBlindSummaryCsv, parseBlindExport,
   summarizeBlindTrials, type ImportedBlindTrial,
@@ -24,6 +25,7 @@ export default function BlindSummaryWorkbench(){
   const [notice,setNotice]=useState('');
   const [issues,setIssues]=useState<string[]>([]);
   const summary=useMemo(()=>summarizeBlindTrials(records),[records]);
+  const paired=useMemo(()=>summarizePairedBlindTrials(records),[records]);
 
   async function importFiles(files:File[]) {
     if(busy)return;
@@ -131,6 +133,69 @@ export default function BlindSummaryWorkbench(){
           {summary.warning.map((w,i)=><li key={i}>{w}</li>)}
         </ul>
       </div>}
+    </section>
+
+    <section className="rounded-xl p-4 space-y-3"
+      style={{border:'1px solid var(--t-border)',background:'var(--t-card)'}}>
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold">同一样本的 0／50／100 三档配对</h2>
+        <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
+          只有匿名编号和模型名称都一致，且三个档位各有一轮结果，才纳入配对。
+          同一档重复测试固定取最早的一次，不按结果挑选。
+        </p>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {([
+          ['有编号的模型样本组',paired.cohorts],
+          ['三档完整组',paired.completeTriplets],
+          ['未完成三档组',paired.incompleteCohorts],
+          ['相同档位重复轮次',paired.repeatedCells],
+        ] as const).map(([label,value])=><div key={label}
+          className="rounded-lg p-3" style={{background:'var(--t-surface)'}}>
+          <p className="text-xs leading-5" style={{color:'var(--t-text2)'}}>{label}</p>
+          <p className="text-xl font-semibold tabular-nums mt-1">{value}</p>
+        </div>)}
+      </div>
+      {paired.completeTriplets>0&&<>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] text-left text-sm">
+            <thead><tr className="text-xs" style={{color:'var(--t-text2)'}}>
+              <th className="py-3 pr-3">明确度</th>
+              <th className="py-3 px-3">选真实盘</th>
+              <th className="py-3 px-3">选合成盘</th>
+              <th className="py-3 pl-3">其他选择</th>
+            </tr></thead>
+            <tbody>{paired.perSpecificity.map(row=><tr key={row.specificity}
+              style={{borderTop:'1px solid var(--t-border)'}}>
+              <td className="py-3 pr-3 tabular-nums">{row.specificity}</td>
+              <td className="py-3 px-3 tabular-nums">{row.selectedTarget}</td>
+              <td className="py-3 px-3 tabular-nums">{row.selectedControl}</td>
+              <td className="py-3 pl-3 tabular-nums">{row.ambiguous}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+        <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="rounded-lg p-3" style={{background:'var(--t-surface)'}}>
+            <p style={{color:'var(--t-text2)'}}>0 → 100：从选合成盘变为选真实盘</p>
+            <p className="text-lg font-semibold mt-1 tabular-nums">{paired.changedTowardTarget}</p>
+          </div>
+          <div className="rounded-lg p-3" style={{background:'var(--t-surface)'}}>
+            <p style={{color:'var(--t-text2)'}}>0 → 100：从选真实盘变为选合成盘</p>
+            <p className="text-lg font-semibold mt-1 tabular-nums">{paired.changedTowardControl}</p>
+          </div>
+          <div className="rounded-lg p-3" style={{background:'var(--t-surface)'}}>
+            <p style={{color:'var(--t-text2)'}}>明确二选一且结果不变</p>
+            <p className="text-lg font-semibold mt-1 tabular-nums">{paired.unchangedDecisive}</p>
+          </div>
+          <div className="rounded-lg p-3" style={{background:'var(--t-surface)'}}>
+            <p style={{color:'var(--t-text2)'}}>任一端未明确选择，无法比较变化</p>
+            <p className="text-lg font-semibold mt-1 tabular-nums">{paired.nonDecisivePairs}</p>
+          </div>
+        </div>
+      </>}
+      <ul className="list-disc pl-5 text-xs leading-6 space-y-1" style={{color:'var(--t-text2)'}}>
+        {paired.notes.map((note,i)=><li key={i}>{note}</li>)}
+      </ul>
     </section>
 
     {summary.groups.length>0&&<section className="space-y-3">
