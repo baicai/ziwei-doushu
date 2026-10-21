@@ -8,10 +8,10 @@ import AiSpecificityControl from '@/components/AiSpecificityControl';
 import AiEvidencePanel, {toEvidenceAudit,type AiEvidenceAuditResult} from '@/components/AiEvidencePanel';
 import { specificityLabel } from '@/lib/ai/specificity';
 import { selectedTimeReading } from '@/lib/ziwei/time-reading';
+import { buildLayTopicReading } from '@/lib/ziwei/plain-language-report';
 import {
   OFFLINE_TOPICS,
   matchOfflineTopic,
-  offlineTopicAnalysis,
   offlinePalaceAnalysis,
   offlineSihuaAnalysis,
   type OfflineTopic,
@@ -47,13 +47,13 @@ function ReadingContent({ content }: { content: string }) {
         const title = line.match(/^\*\*【(.+?)】\*\*$/);
         if (title) {
           return (
-            <h3 key={index} className="pt-2.5 pb-0.5 text-[12px] font-semibold" style={{ color: 'var(--t-gold)' }}>
+            <h3 key={index} className="pt-2.5 pb-0.5 text-sm font-semibold" style={{ color: 'var(--t-gold)' }}>
               {title[1]}
             </h3>
           );
         }
         return (
-          <p key={index} className="text-[12px] leading-[1.8] whitespace-pre-wrap" style={{ color: 'var(--t-text2)' }}>
+          <p key={index} className="text-[14px] leading-[1.9] whitespace-pre-wrap" style={{ color: 'var(--t-text2)' }}>
             {line}
           </p>
         );
@@ -71,7 +71,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
   const [aiError, setAiError] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [readings, setReadings] = useState<Reading[]>(() => [
-    { heading: '命格', content: offlineTopicAnalysis(chart, 'overview') },
+    { heading: '命格', content: buildLayTopicReading(chart, 'overview') },
   ]);
   const lastPalace = useRef<string | null>(null);
   const lastSihua = useRef<string | null>(null);
@@ -80,7 +80,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
   useEffect(() => {
     setAiError(''); setAiTurns([]);
     setActiveTopic('overview');
-    setReadings([{ heading: '命格', content: offlineTopicAnalysis(chart, 'overview') }]);
+    setReadings([{ heading: '命格', content: buildLayTopicReading(chart, 'overview') }]);
     lastPalace.current = null;
     lastSihua.current = null;
   }, [chart]);
@@ -115,7 +115,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
     setAiError(''); setAiTurns([]);
     setActiveTopic(topic);
     const label = OFFLINE_TOPICS.find(t => t.key === topic)?.label ?? '专题';
-    setReadings([{ heading: label, content: offlineTopicAnalysis(chart, topic) }]);
+    setReadings([{ heading: label, content: buildLayTopicReading(chart, topic) }]);
   };
 
   const handleSearch = () => {
@@ -132,7 +132,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
       const label = OFFLINE_TOPICS.find(t => t.key === topic)?.label ?? '专题';
       setReadings([{
         heading: `${label} · 关键词匹配`,
-        content: `根据「${question}」，为你展示「${label}」专题：\n\n${offlineTopicAnalysis(chart, topic)}`,
+        content: `根据「${question}」，为你展示「${label}」专题：\n\n${buildLayTopicReading(chart, topic)}`,
       }]);
     }
     setInput('');
@@ -144,7 +144,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
     try {
       const response = await fetch('/api/interpret', {
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({birthInfo:chart.birthInfo,topic:activeTopic,specificity,question:input.trim().slice(0,500),
+        body:JSON.stringify({birthInfo:chart.birthInfo,topic:activeTopic,style:'plain',specificity,question:input.trim().slice(0,500),
           history:aiTurns.slice(-3).flatMap(turn => [
             {role:'user',content:turn.question.slice(0,500)},
             {role:'assistant',content:turn.answer.slice(0,600)},
@@ -212,7 +212,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, liu
           style={{border:'1px solid var(--t-border)',background:'var(--t-card)'}}>
           <div className="text-[12px] font-semibold mb-1" style={{color:'var(--t-text)'}}>提问：{turn.question}</div>
           <div className="text-[12px] font-semibold mb-2 mt-3" style={{color:'var(--t-gold)'}}>AI 深度解读{aiLab?' · '+turn.specificity+'/100（'+specificityLabel(turn.specificity)+'）':''}</div>
-          <p className="text-[12px] leading-[1.8] whitespace-pre-wrap" style={{color:'var(--t-text2)'}}>{turn.answer}</p>
+          <p className="text-[14px] leading-[1.9] whitespace-pre-wrap" style={{color:'var(--t-text2)'}}>{turn.answer}</p>
           <AiEvidencePanel audit={turn.audit}/>
         </article>)}
         {readings.map((reading, index) => (
