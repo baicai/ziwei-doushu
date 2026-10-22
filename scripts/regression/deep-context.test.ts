@@ -22,8 +22,12 @@ for(const chapter of result.chapters) {
   assert(Array.isArray(chapter.constellation[0].details.selfTransformation));
   assert(Array.isArray(chapter.supplements));
 }
-assert.notEqual(result.chapters[1].constellation[0].details.branch,
-  result.chapters[2].constellation[0].details.branch,
+const relationship=result.chapters.find(c=>c.key==='love');
+const career=result.chapters.find(c=>c.key==='career');
+if(!relationship?.available||!career?.available)
+  throw new Error('expected relationship and career palace evidence');
+assert.notEqual(relationship.constellation[0].details.branch,
+  career.constellation[0].details.branch,
   'relationship and career require distinct center palaces');
 const serialized=JSON.stringify(result);
 assert(!serialized.includes('敏感姓名不应上送'));
