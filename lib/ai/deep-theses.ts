@@ -56,7 +56,7 @@ export function buildDeepThesisCards(chart:ZiweiChart):DeepThesisCard[]{
     work.trigger=['官禄宫廉贞与贪狼','官禄宫见空劫类星曜'];
     work.hypothesis='传统上可讨论机会多元、变动与资源兑现之间的拉扯，但这些盘面不能证明“先答应再补资源”。应比较两种可相反的做法：先接受再补位，或先严审资源和风险，确定可落地才接受。';
     work.alternative='对执行结果要求高的人，也可能对启动前的资源、角色分配和验收非常严格；严审失败后才亲自介入。';
-    work.checkQuestion='别人交给你一个新项目，你通常先答应再找资源，还是先检查已有方案、负责人、成本和验收条件？';
+    work.checkQuestion='有人找你一起做一件事，你会先说“行，我来试试”，还是先问清楚谁负责、要花多少钱、何时算完成？';
   }
   cards.push(work);
   const money=base('wealth','较大的资源投入是否有清楚的决策门槛');
@@ -64,7 +64,7 @@ export function buildDeepThesisCards(chart:ZiweiChart):DeepThesisCard[]{
     money.trigger=['财帛宫武曲化忌','财帛宫七杀'];
     money.hypothesis='传统取象可讨论资源使用与损失容忍度，但不能从此推断AA计较、借钱、投资失败或收入状况。把讨论限定于较大支出或项目预算的决策门槛。';
     money.alternative='在日常小额消费可能很随意，但在企业项目和较大投入上非常审慎；也可能反过来。命盘不足以区分，必须让本人验证。';
-    money.checkQuestion='面对一个价格高但能省掉大量人力的成熟工具，你更愿意核算总成本后付费，还是坚持低价方案？';
+    money.checkQuestion='遇到一件贵一些但能省下很多时间的东西，你会先算总共值不值，还是先选眼前便宜的？';
   }
   cards.push(money);
   const wellness=base('health','作息与休息主题是否有独立、可核验的观察依据');
