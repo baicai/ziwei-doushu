@@ -30,7 +30,7 @@ const repeated=answer+'\n【命格】新的一段';
 assert.equal(parseSixTopicAnswer(repeated).length,6,'duplicate section must not create seventh item');
 const variant=answer.replace('【命格】','## **【命格】**');
 assert.equal(sixTopicFormatComplete(variant),true);
-const deepMarkdown=answer.replace(/【(命格|感情|事业|财运|健康|性格)】/g,'## $1\\n');
+const deepMarkdown=answer.replace(/【(命格|感情|事业|财运|健康|性格)】/g,'## $1\n');
 assert.equal(sixTopicFormatComplete(deepMarkdown),true,
   'actual DeepSeek deep mode uses Markdown ## headings, not bracket headings');
 assert.deepEqual(parseSixTopicAnswer(deepMarkdown).map(x=>x.key),PUBLIC_TOPIC_ORDER);
