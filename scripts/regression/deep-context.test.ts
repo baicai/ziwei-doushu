@@ -36,5 +36,5 @@ assert(!serialized.includes('103.8'));
 for(const token of ['deepChapterEvidence','本宫','对宫','四化','反例','支持不足'])
   assert((DEEP_READING_PROMPT+'deepChapterEvidence').includes(token),
     'deep prompt should demand '+token);
-assert(DEEP_READING_VERSION.includes('v3'));
+assert(DEEP_READING_VERSION.includes('v4'));
 console.log('Deep reading six independently evidenced palace networks and privacy guard regression passed');
