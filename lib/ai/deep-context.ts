@@ -40,8 +40,8 @@ export function buildDeepReadingContext(chart:ZiweiChart){
       ['三合之一',byBranch(center.branch+4)],
       ['三合之二',byBranch(center.branch+8)],
     ] as const;
-    const constellation=companion.filter(([,p]):p is Palace=>Boolean(p))
-      .map(([relationship,p])=>({relationship,details:starFacts(p!)}));
+    const constellation=companion.flatMap(([relationship,p])=>p
+      ? [{relationship,details:starFacts(p)}] : []);
     const inNetwork=new Set(constellation.map(x=>x.details.branch));
     const supplements=EXTRAS[topic.key].map(byName).filter((p):p is Palace=>Boolean(p))
       .filter(p=>!inNetwork.has(p.branch))
