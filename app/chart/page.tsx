@@ -6,6 +6,7 @@ import ChartBoard from '@/components/ChartBoard';
 import MobilePalaceExplorer from '@/components/MobilePalaceExplorer';
 import InsightPanel from '@/components/InsightPanel';
 import ReportPanel from '@/components/ReportPanel';
+import type { AiEvidenceAuditResult } from '@/components/AiEvidencePanel';
 import ShareModal from '@/components/ShareModal';
 import UnknownHourChoices from '@/components/UnknownHourChoices';
 import TimeNav, { type TimeView } from '@/components/TimeNav';
@@ -43,6 +44,7 @@ export default function ChartPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [aiLab, setAiLab] = useState(false);
   const [specificity, setSpecificity] = useState(0);
+  const [sharedBasicAi,setSharedBasicAi] = useState<{chart:ZiweiChart;answer:string;audit:AiEvidenceAuditResult|null}|null>(null);
   const draftRef = useRef<BirthFormState | null>(null);
   const { history, save: saveHistory, remove: removeHistory, clear: clearHistory } = useHistory();
   const navRef = useRef<HTMLDivElement>(null);
@@ -324,11 +326,14 @@ export default function ChartPage() {
           </div>
         </div>
         <div className="min-w-0"><InsightPanel chart={chart} selectedPalace={selectedPalace} liunianYear={liunianYear} timeView={view}
-          specificity={specificity} aiLab={aiLab} onSpecificityChange={setSpecificity} /></div>
+          specificity={specificity} aiLab={aiLab} onSpecificityChange={setSpecificity}
+          sharedBasicAi={sharedBasicAi?.chart===chart?sharedBasicAi:null} /></div>
       </div>
 
       <ReportPanel chart={chart} year={liunianYear}
-        specificity={specificity} aiLab={aiLab} onSpecificityChange={setSpecificity} />
+        specificity={specificity} aiLab={aiLab} onSpecificityChange={setSpecificity}
+        onBasicAiReady={(answer,audit)=>setSharedBasicAi({chart,answer,audit})}
+        onBasicAiClear={()=>setSharedBasicAi(null)} />
       {shareForm && <ShareModal open={shareOpen} onClose={() => setShareOpen(false)}
         shareUrl={shareUrl} chart={chart}
         birth={{year:shareForm.year,month:shareForm.month,day:shareForm.day,
