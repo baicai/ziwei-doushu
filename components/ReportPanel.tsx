@@ -93,9 +93,12 @@ function ProfessionalReport({report}:{report:string}) {
   </div>;
 }
 
-export default function ReportPanel({ chart, year, specificity=0, aiLab=false, onSpecificityChange }: {
+export default function ReportPanel({ chart, year, specificity=0, aiLab=false, onSpecificityChange,
+  onBasicAiReady,onBasicAiClear }: {
   chart: ZiweiChart; year: number; specificity?: number; aiLab?: boolean;
   onSpecificityChange?: (value:number)=>void;
+  onBasicAiReady?:(answer:string,audit:ReturnType<typeof toEvidenceAudit>)=>void;
+  onBasicAiClear?:()=>void;
 }) {
   const [open,setOpen]=useState(true);
   const [version,setVersion]=useState<'plain'|'evidence'>('plain');
@@ -134,7 +137,9 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
         response.status===429?'当前 AI 体验次数较多，请稍后再试。':
         typeof parsed?.error==='string'?parsed.error:'AI 暂时不可用，请稍后再试。');
       const hypothesisCheck=specificity>=80?parseReviewableHypotheses(parsed.answer):null;
-      setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity,audit:toEvidenceAudit(parsed.evidenceAudit,parsed.factualAudit),
+      const audit=toEvidenceAudit(parsed.evidenceAudit,parsed.factualAudit);
+      onBasicAiReady?.(parsed.answer,audit);
+      setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity,audit,
         model:typeof parsed.model==='string'?parsed.model:'unknown',
         writingVersion:typeof parsed.writingVersion==='string'?parsed.writingVersion:'untracked',review:null,note:'',
         hypotheses:hypothesisCheck?.hypotheses.map(h=>({...h,review:null,note:''})),
@@ -272,23 +277,16 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       </section>
       {aiLab&&<>
       <div className="mt-5 rounded-xl p-4 space-y-2" style={{border:'1px solid var(--t-border)'}}>
-        <h3 className="font-semibold text-sm" style={{color:'var(--t-text)'}}>想获得更详细的 AI 分析？</h3>
+        <h3 className="font-semibold text-sm" style={{color:'var(--t-text)'}}>通俗版实验反馈（不再次调用模型）</h3>
         <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
-          由 DeepSeek 根据当前命盘进一步综合解读。点击后会向第三方 AI 服务发送命盘数据，并消耗一次 AI 调用额度。
+          这里查看上方通俗版已经生成的样本及历史实验反馈，不提供第二个重复的通俗版生成按钮。
         </p>
-        {aiLab&&onSpecificityChange&&<AiSpecificityControl value={specificity}
-          onChange={onSpecificityChange}/>}
-        <button type="button" onClick={requestAi} disabled={aiBusy}
-          className="min-h-11 rounded-lg px-4 text-sm font-medium disabled:opacity-50"
-          style={{background:'rgba(212,168,67,0.12)',border:'1px solid rgba(212,168,67,0.4)',color:'var(--t-gold)'}}>
-          {aiBusy?'正在生成 AI 解读…':'使用 DeepSeek 生成通俗分析'}
-        </button>
         {aiRuns.length>0&&<div className="mt-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs" style={{color:'var(--t-text2)'}}>
               {aiLab?'保留最近 4 次结果，方便对照不同明确度。':'本次 AI 分析结果'}
             </p>
-            <button type="button" onClick={()=>setAiRuns([])}
+            <button type="button" onClick={()=>{setAiRuns([]);onBasicAiClear?.();}}
               className="min-h-11 text-xs underline" style={{color:'var(--t-text2)'}}>清空 AI 分析</button>
           </div>
           {aiLab&&<div className="rounded-xl p-3 space-y-2" style={{border:'1px solid var(--t-border)'}}>
