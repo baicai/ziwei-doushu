@@ -9,6 +9,7 @@ import { checkAiChartFacts } from '@/lib/ziwei/ai-fact-check';
 import { HYPOTHESIS_FORMAT_INSTRUCTIONS, parseReviewableHypotheses } from '@/lib/ai/hypotheses';
 import { LAY_WRITING_PROMPT, LAY_WRITING_VERSION, DEEP_READING_PROMPT, DEEP_READING_VERSION } from '@/lib/ai/lay-writing';
 import { sixTopicFormatComplete } from '@/lib/ai/reading-sections';
+import { buildDeepReadingContext } from '@/lib/ai/deep-context';
 import type { BirthInfo } from '@/lib/ziwei/types';
 import { offlineTopicAnalysis, OFFLINE_TOPICS, type OfflineTopic } from '@/lib/ziwei/offline-interpretation';
 
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
       (specificity>=80?'\n'+HYPOTHESIS_FORMAT_INSTRUCTIONS:'');
     const context=chart.palaces.map(p=>({name:p.name,branch:p.branch,stem:p.stem,stars:p.stars.map(s=>({name:s.name,type:s.type,siHua:s.siHua,brightness:s.brightnessRaw}))}));
     const refs=(specificity>=20||readingTier==='deep') ? sourceCatalog.map(e=>({id:e.id,fact:e.fact})) : undefined;
+    const deepFacts=readingTier==='deep'?buildDeepReadingContext(chart):undefined;
     const ctrl=new AbortController();
     const timeout=setTimeout(()=>ctrl.abort(),45000);
     let response:Response;
@@ -109,8 +111,8 @@ export async function POST(request: NextRequest) {
 
             {role:'system',content:controlledPrompt},
             ...history,
-            {role:'user',content:JSON.stringify({topic,question,chart:{timePrecision:chart.birthInfo.timePrecision ?? 'known',lunarInfo:chart.lunarInfo,mingGongBranch:chart.mingGongBranch,wuxingJuName:chart.wuxingJuName,palaces:context},ruleEvidence:evidence,evidenceReferences:refs})}
-          ]),max_tokens:readingTier==='deep'?2600:1200}),signal:ctrl.signal,
+            {role:'user',content:JSON.stringify({topic,question,chart:{timePrecision:chart.birthInfo.timePrecision ?? 'known',lunarInfo:chart.lunarInfo,mingGongBranch:chart.mingGongBranch,wuxingJuName:chart.wuxingJuName,palaces:context},ruleEvidence:evidence,evidenceReferences:refs,deepChapterEvidence:deepFacts})}
+          ]),max_tokens:readingTier==='deep'?3500:1800}),signal:ctrl.signal,
       });
     } finally {clearTimeout(timeout);}
     if(!response.ok) return NextResponse.json({error:response.status===429?'模型调用过于频繁，请稍后重试。':'AI 服务暂时不可用，请检查 API 额度或模型配置。'}, {status:502});
