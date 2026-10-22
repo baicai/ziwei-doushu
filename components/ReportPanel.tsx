@@ -14,6 +14,7 @@ import { DIRECT_USER_QUESTION } from '@/lib/ai/lay-writing';
 import BlindEvaluationPanel from '@/components/BlindEvaluationPanel';
 import AiChapterReader from '@/components/AiChapterReader';
 import { parseSixTopicAnswer } from '@/lib/ai/reading-sections';
+import type { DeepGroundingResult } from '@/lib/ai/deep-grounding';
 
 export function buildChartReport(chart: ZiweiChart, year: number): string {
   const lines = [
@@ -109,6 +110,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
   const [deepBusy,setDeepBusy]=useState(false);
   const [deepResult,setDeepResult]=useState<{
     answer:string;audit:ReturnType<typeof toEvidenceAudit>;
+    grounding:DeepGroundingResult|null;
     quality:{complete:boolean;reviewRequired:boolean;
       warnings:{code:string;message:string;topics:string[]}[];limitation:string;}|null;
   }|null>(null);
@@ -180,6 +182,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       }) : [];
       setDeepResult({answer:result.answer,
         audit:toEvidenceAudit(result.evidenceAudit,result.factualAudit),
+        grounding:result.deepGrounding && typeof result.deepGrounding==='object' ? result.deepGrounding as DeepGroundingResult : null,
         quality:qa?{complete:qa.complete===true,reviewRequired:qa.reviewRequired===true,
           warnings,limitation:typeof qa.limitation==='string'?qa.limitation:''}:null});
     }catch(e){setDeepError(e instanceof Error?e.message:'深度解读暂时不可用');}
@@ -279,7 +282,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
         </p>
         {deepError&&<p role="alert" className="text-xs" style={{color:'#f59e0b'}}>{deepError}</p>}
         {deepResult&&<>
-          <AiChapterReader fallback={sections} chapters={deepChapters} audit={deepResult.audit} variant="deep"/>
+          <AiChapterReader fallback={sections} chapters={deepChapters} audit={deepResult.audit} grounding={deepResult.grounding} variant="deep"/>
           {deepChapters.length<6&&<p role="status" className="text-xs leading-6" style={{color:'#f59e0b'}}>
             深度版只识别到 {deepChapters.length}/6 个主题，其余展示规则参考。
           </p>}
@@ -291,7 +294,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
             <summary className="min-h-11 flex items-center cursor-pointer text-sm"
               style={{color:deepResult.quality.reviewRequired?'#f59e0b':'var(--t-text2)'}}>
               深度内容自动检查 · {deepResult.quality.reviewRequired
-                ? '存在需要复核的地方':'未发现已知格式与重复表达问题'}
+                ? '存在需要复核的地方':'未发现已知结构与引用问题'}
             </summary>
             <div className="pb-3 text-xs space-y-2 leading-6" style={{color:'var(--t-text2)'}}>
               {deepResult.quality.warnings.map((w,i)=><p key={i}>
