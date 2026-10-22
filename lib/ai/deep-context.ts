@@ -33,7 +33,7 @@ export function buildDeepReadingContext(chart:ZiweiChart){
   const byBranch=(branch:number)=>chart.palaces.find(p=>p.branch===(branch+12)%12);
   const chapters=OFFLINE_TOPICS.map(topic=>{
     const center=byName(CENTER[topic.key]);
-    if(!center)return {key:topic.key,label:topic.label,available:false,limitations:['关键宫位缺失']};
+    if(!center)return {key:topic.key,label:topic.label,available:false as const,limitations:['关键宫位缺失']};
     const companion=[
       ['本宫',center],
       ['对宫',byBranch(center.branch+6)],
@@ -47,7 +47,7 @@ export function buildDeepReadingContext(chart:ZiweiChart){
       .filter(p=>!inNetwork.has(p.branch))
       .map(starFacts);
     return {
-      key:topic.key,label:topic.label,available:true,
+      key:topic.key,label:topic.label,available:true as const,
       traditionalScope:topicSynthesis(chart,topic.key),
       constellation,supplements,
       limitations:topic.key==='health'
