@@ -1,6 +1,7 @@
 import type { Palace, ZiweiChart } from '../ziwei/types';
 import { OFFLINE_TOPICS, type OfflineTopic } from '../ziwei/offline-interpretation';
 import { topicSynthesis } from '../ziwei/topic-synthesis';
+import { buildDeepThesisCards } from './deep-theses';
 
 /**
  * Fact-only deep-reading context. Values are computed from the existing chart,
@@ -64,6 +65,7 @@ export function buildDeepReadingContext(chart:ZiweiChart){
     mingGongBranch:chart.mingGongBranch,shenGongBranch:chart.shenGongBranch,
     wuxingJuName:chart.wuxingJuName,
     chapters,
-    note:'本资料只含实际排盘结构与传统解释条件；无真实经历、身份或预测事件。',
+    interpretiveHypotheses:buildDeepThesisCards(chart),
+    note:'interpretiveHypotheses 是有条件的传统取象备选假设，并非真实经历；不得把这些假设当作已经证实的人格事实。',
   };
 }
