@@ -34,11 +34,14 @@ const deepMarkdown=answer.replace(/【(命格|感情|事业|财运|健康|性格
 assert.equal(sixTopicFormatComplete(deepMarkdown),true,
   'actual DeepSeek deep mode uses Markdown ## headings, not bracket headings');
 assert.deepEqual(parseSixTopicAnswer(deepMarkdown).map(x=>x.key),PUBLIC_TOPIC_ORDER);
+const withActions=deepMarkdown+'\n## 可以怎么做\n模型另外给了三条建议。';
+assert(!parseSixTopicAnswer(withActions)[5].text.includes('模型另外给了三条建议'),
+ 'action appendix must stay outside sixth chapter');
 assert.equal(parseSixTopicAnswer('我谈谈命格和感情。').length,0,
   'prose words must never count as chapter headings');
 
 assert(LAY_WRITING_VERSION.includes('v4'));
-assert(DEEP_READING_VERSION.includes('v3'));
+assert(DEEP_READING_VERSION.includes('v4'));
 for(const title of ['【命格】','【感情】','【事业】','【财运】','【健康】','【性格】']){
   assert(LAY_WRITING_PROMPT.includes(title),'missing basic topic '+title);
   assert(DEEP_READING_PROMPT.includes(title),'missing deep topic '+title);
