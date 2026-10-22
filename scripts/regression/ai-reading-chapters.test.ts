@@ -31,7 +31,7 @@ assert.equal(parseSixTopicAnswer(repeated).length,6,'duplicate section must not 
 const variant=answer.replace('【命格】','## **【命格】**');
 assert.equal(sixTopicFormatComplete(variant),true);
 assert(LAY_WRITING_VERSION.includes('v4'));
-assert(DEEP_READING_VERSION.includes('v1'));
+assert(DEEP_READING_VERSION.includes('v2'));
 for(const title of ['【命格】','【感情】','【事业】','【财运】','【健康】','【性格】']){
   assert(LAY_WRITING_PROMPT.includes(title),'missing basic topic '+title);
   assert(DEEP_READING_PROMPT.includes(title),'missing deep topic '+title);
