@@ -11,11 +11,19 @@ export type AiReadingSection={key:OfflineTopic;label:string;text:string;referenc
  * silently attribute a generic paragraph to a specific palace.
  */
 export function parseSixTopicAnswer(answer:string):AiReadingSection[]{
-  const head=/(?:^|\n)\s*(?:#{1,3}\s*)?(?:\*\*)?【(命格|感情|事业|财运|健康|性格)】(?:\*\*)?\s*/g;
+  // Support both prescribed 【主题】 and common model Markdown headings
+  // (## 主题). Do not mistake everyday mentions inside prose for a chapter.
+  const titles='命格|感情|事业|财运|健康|性格';
+  const head=new RegExp(
+    '(?:^|\\n)[ \\t]*(?:'+
+      '(?:#{1,4}[ \\t]+)(?:\\*\\*)?('+titles+')(?:\\*\\*)?[ \\t]*(?=\\r?\\n|$)'+
+      '|(?:#{1,4}[ \\t]*)?(?:\\*\\*)?【('+titles+')】(?:\\*\\*)?[ \\t]*'+
+    ')','g');
+
   const found=Array.from(answer.matchAll(head));
   const byLabel=new Map<string,AiReadingSection>();
   for(let i=0;i<found.length;i++){
-    const label=found[i][1];
+    const label=found[i][1]||found[i][2];
     if(byLabel.has(label))continue;
     const begin=(found[i].index??0)+found[i][0].length;
     const end=found[i+1]?.index??answer.length;
