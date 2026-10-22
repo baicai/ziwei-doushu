@@ -29,7 +29,7 @@ export function parseSixTopicAnswer(answer:string):AiReadingSection[]{
     const end=found[i+1]?.index??answer.length;
     let raw=answer.slice(begin,end).trim();
     // Experimental hypothesis appendix is not part of the last 性格 chapter.
-    const appendix=raw.search(/(?:^|\n)\s*(?:\*\*)?【(?:待核验假设[123]|假设[123]|可以怎么做|实验反馈)】/);
+    const appendix=raw.search(/(?:^|\n)\s*(?:(?:#{1,4}\s+)(?:可以怎么做|实际建议|行动建议|待核验假设[123]|实验反馈)(?:\s|$)|(?:\*\*)?【(?:待核验假设[123]|假设[123]|可以怎么做|实际建议|行动建议|实验反馈)】)/);
     if(appendix>=0)raw=raw.slice(0,appendix).trim();
     if(!raw)continue;
     const referenceIds=Array.from(raw.matchAll(/\[依据:([^\]]+)\]/g)).flatMap(m=>
