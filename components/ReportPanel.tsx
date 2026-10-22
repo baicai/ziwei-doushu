@@ -107,7 +107,11 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
   const [caseId,setCaseId]=useState('');
   const [aiBusy,setAiBusy]=useState(false);
   const [deepBusy,setDeepBusy]=useState(false);
-  const [deepResult,setDeepResult]=useState<{answer:string;audit:ReturnType<typeof toEvidenceAudit>}|null>(null);
+  const [deepResult,setDeepResult]=useState<{
+    answer:string;audit:ReturnType<typeof toEvidenceAudit>;
+    quality:{complete:boolean;reviewRequired:boolean;
+      warnings:{code:string;message:string;topics:string[]}[];limitation:string;}|null;
+  }|null>(null);
   const [deepError,setDeepError]=useState('');
   const sections=useMemo(()=>buildPlainSections(chart),[chart]);
   const plainText=useMemo(()=>buildPlainTextReport(chart,year),[chart,year]);
@@ -165,7 +169,19 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       const result=data&&typeof data==='object'?data as Record<string,unknown>:null;
       if(!response.ok||typeof result?.answer!=='string'||!result.answer.trim())
         throw new Error(typeof result?.error==='string'?result.error:'深度解读未能生成，请稍后重试。');
-      setDeepResult({answer:result.answer,audit:toEvidenceAudit(result.evidenceAudit,result.factualAudit)});
+      const qa=result.deepQualityAudit&&typeof result.deepQualityAudit==='object'
+        ? result.deepQualityAudit as Record<string,unknown> : null;
+      const warnings=Array.isArray(qa?.warnings) ? qa.warnings.flatMap(item=>{
+        if(!item||typeof item!=='object')return [];
+        const w=item as Record<string,unknown>;
+        return typeof w.message==='string'&&typeof w.code==='string'
+          ? [{code:w.code,message:w.message,topics:Array.isArray(w.topics)?w.topics.filter(x=>typeof x==='string') as string[]:[]}]
+          : [];
+      }) : [];
+      setDeepResult({answer:result.answer,
+        audit:toEvidenceAudit(result.evidenceAudit,result.factualAudit),
+        quality:qa?{complete:qa.complete===true,reviewRequired:qa.reviewRequired===true,
+          warnings,limitation:typeof qa.limitation==='string'?qa.limitation:''}:null});
     }catch(e){setDeepError(e instanceof Error?e.message:'深度解读暂时不可用');}
     finally{setDeepBusy(false);}
   };
@@ -270,6 +286,20 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
           {deepChapters.length===0&&<details><summary className="cursor-pointer min-h-11">
             查看未按章节生成的深度版 AI 原文
           </summary><p className="whitespace-pre-wrap leading-7 text-sm">{deepResult.answer}</p></details>}
+          {deepResult.quality&&<details className="rounded-lg px-3"
+            style={{border:'1px solid var(--t-border)'}}>
+            <summary className="min-h-11 flex items-center cursor-pointer text-sm"
+              style={{color:deepResult.quality.reviewRequired?'#f59e0b':'var(--t-text2)'}}>
+              深度内容自动检查 · {deepResult.quality.reviewRequired
+                ? '存在需要复核的地方':'未发现已知格式与重复表达问题'}
+            </summary>
+            <div className="pb-3 text-xs space-y-2 leading-6" style={{color:'var(--t-text2)'}}>
+              {deepResult.quality.warnings.map((w,i)=><p key={i}>
+                {w.message} {w.topics.length?'（涉及：'+w.topics.join('、')+'）':''}
+              </p>)}
+              <p>{deepResult.quality.limitation}</p>
+            </div>
+          </details>}
           <AiEvidencePanel audit={deepResult.audit}/>
           <button type="button" onClick={()=>downloadText(deepResult.answer,'紫微研究_深度分析.txt')}
             className="min-h-11 text-xs underline" style={{color:'var(--t-gold)'}}>保存完整深度分析</button>
