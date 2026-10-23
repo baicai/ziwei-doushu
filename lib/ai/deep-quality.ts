@@ -1,5 +1,6 @@
 import { parseSixTopicAnswer, PUBLIC_TOPIC_ORDER } from './reading-sections';
 import type { OfflineTopic } from '../ziwei/offline-interpretation';
+import type { DeepChapterGrounding } from './deep-grounding';
 
 /**
  * Lightweight editorial QA, not an objective truthfulness score.
@@ -7,7 +8,7 @@ import type { OfflineTopic } from '../ziwei/offline-interpretation';
  * reader's actual life. Results are informative warnings, never credentials.
  */
 export type DeepQualityWarning={
-  code:'MISSING_TOPICS'|'MISSING_REFERENCES'|'SIMILAR_CHAPTERS'|'UNSUPPORTED_PRIVATE_ASSERTION'|'SHORT_CHAPTER';
+  code:'MISSING_TOPICS'|'MISSING_REFERENCES'|'SIMILAR_CHAPTERS'|'UNSUPPORTED_PRIVATE_ASSERTION'|'SHORT_CHAPTER'|'WEAK_CHAPTER_GROUNDING'|'UNCHECKED_NATAL_FACTS'|'CONTRADICTORY_NATAL_FACTS';
   message:string;
   topics:OfflineTopic[];
 };
@@ -31,7 +32,7 @@ const PRIVATE_ASSUMPTIONS=[
   /(?:你的|你家)(?:丈夫|妻子|孩子|房产|收入|存款)/,
   /你(?:每次|经常)聚餐.{0,12}(?:AA|几十元)/,
 ];
-export function assessDeepReportQuality(answer:string):DeepQualityAudit {
+export function assessDeepReportQuality(answer:string,grounding:DeepChapterGrounding[]=[]):DeepQualityAudit {
   const chapters=parseSixTopicAnswer(answer);
   const warnings:DeepQualityWarning[]=[];
   const missing=PUBLIC_TOPIC_ORDER.filter(t=>!chapters.some(c=>c.key===t));
@@ -64,9 +65,19 @@ export function assessDeepReportQuality(answer:string):DeepQualityAudit {
     warnings.push({code:'UNSUPPORTED_PRIVATE_ASSERTION',topics:unsafe,
       message:'检测到可能把私人经历写成已知事实的措辞，请人工核对；规则检查不保证能发现全部编造。'});
   }
+  const present=grounding.filter(c=>c.chapterPresent);
+  const weak=present.filter(c=>!c.hasRelevantCitation).map(c=>c.topic);
+  if(weak.length)warnings.push({code:'WEAK_CHAPTER_GROUNDING',topics:weak,
+    message:'部分章节只引用外围资料或没有引用本宫、对宫、三方的命盘依据；需要补足本章的实际盘面来源。'});
+  const unchecked=present.filter(c=>c.explicitFactMatches===0).map(c=>c.topic);
+  if(unchecked.length)warnings.push({code:'UNCHECKED_NATAL_FACTS',topics:unchecked,
+    message:'部分章节没有被当前规则识别到可直接核对的星曜／空宫事实句；不表示它们必然错误，但不能宣称文字已完成事实核验。'});
+  const conflicts=present.filter(c=>c.explicitFactConflicts>0).map(c=>c.topic);
+  if(conflicts.length)warnings.push({code:'CONTRADICTORY_NATAL_FACTS',topics:conflicts,
+    message:'部分章节出现与实际命盘相冲突的可识别结构陈述；请优先人工复核，不能以引用存在代替正确性。'});
   return {
     complete:missing.length===0,chapters:chapters.length,warnings,
     reviewRequired:warnings.length>0,
-    limitation:'这里只检测章节、引用格式、少量重复主题和明显私人断言；通过检查不代表预测准确或本人经历属实。',
+    limitation:'检查章节、引用格式、部分重复主题、私人断言和逐章本命依据；句式识别有盲区，即使无告警也不能证明人生预测正确。',
   };
 }

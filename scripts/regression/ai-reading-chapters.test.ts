@@ -41,7 +41,8 @@ assert.equal(parseSixTopicAnswer('我谈谈命格和感情。').length,0,
   'prose words must never count as chapter headings');
 
 assert(LAY_WRITING_VERSION.includes('v4'));
-assert(DEEP_READING_VERSION.includes('v4'));
+assert(DEEP_READING_VERSION.includes('v5'));
+assert(DEEP_READING_PROMPT.includes('本宫、对宫或三合宫位'));
 for(const title of ['【命格】','【感情】','【事业】','【财运】','【健康】','【性格】']){
   assert(LAY_WRITING_PROMPT.includes(title),'missing basic topic '+title);
   assert(DEEP_READING_PROMPT.includes(title),'missing deep topic '+title);

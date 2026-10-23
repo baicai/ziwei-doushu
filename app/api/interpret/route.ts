@@ -11,6 +11,7 @@ import { LAY_WRITING_PROMPT, LAY_WRITING_VERSION, DEEP_READING_PROMPT, DEEP_READ
 import { sixTopicFormatComplete } from '@/lib/ai/reading-sections';
 import { buildDeepReadingContext } from '@/lib/ai/deep-context';
 import { assessDeepReportQuality } from '@/lib/ai/deep-quality';
+import { buildDeepChapterGrounding } from '@/lib/ai/deep-grounding';
 import type { BirthInfo } from '@/lib/ziwei/types';
 import { offlineTopicAnalysis, OFFLINE_TOPICS, type OfflineTopic } from '@/lib/ziwei/offline-interpretation';
 
@@ -129,11 +130,12 @@ export async function POST(request: NextRequest) {
     const audit=(specificity>=20||readingTier==='deep') ? evidenceAudit(answer.slice(0,8000),sourceCatalog) : null;
     const factualAudit=(specificity>=20||readingTier==='deep') ? checkAiChartFacts(answer.slice(0,8000),chart) : null;
     const hypothesisFormat=specificity>=80 ? parseReviewableHypotheses(answer.slice(0,8000)) : null;
-    const deepQualityAudit=readingTier==='deep'?assessDeepReportQuality(answer.slice(0,8000)):null;
+    const deepGrounding=readingTier==='deep'?buildDeepChapterGrounding(chart,answer.slice(0,8000)):null;
+    const deepQualityAudit=readingTier==='deep'?assessDeepReportQuality(answer.slice(0,8000),deepGrounding?.chapters):null;
     return NextResponse.json({answer:answer.slice(0,8000),provider:provider.id,model:data.model||model,topic,source:provider.id,specificity,
       readingTier,offer:{tier:readingTier==='deep'?'deep':'basic',access:'free-preview',paymentRequired:false},
       sixTopicComplete:topic==='overview'?sixTopicFormatComplete(answer):null,
-      deepQualityAudit,
+      deepQualityAudit,deepGrounding,
       writingVersion:readingTier==='deep'?DEEP_READING_VERSION:(readingStyle==='plain'?LAY_WRITING_VERSION:'technical-v1'),
       evidenceAudit:audit ? {
         cited:audit.cited.map(e=>({id:e.id,fact:e.fact})),
