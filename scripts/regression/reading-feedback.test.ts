@@ -5,6 +5,7 @@ import {
 } from '../../lib/ai/reading-feedback';
 import type { BirthInfo } from '../../lib/ziwei/types';
 
+async function main(){
 const birth:BirthInfo={year:1990,month:5,day:17,hour:6,gender:'female',name:'匿名',longitude:116.4};
 const main=await readingFeedbackScope(birth);
 assert.ok(main && /^[a-f0-9]{32}$/.test(main));
@@ -34,3 +35,6 @@ assert.deepEqual(readReadingFeedback(storage,main!),{[id]:entry},'reject malform
 local.set(key,'bad json');
 assert.deepEqual(readReadingFeedback(storage,main!),{});
 console.log('Reading feedback privacy, chart isolation and content-key regression passed');
+
+}
+main().catch(error=>{console.error(error);process.exitCode=1;});
