@@ -6,20 +6,67 @@ import type { PlainSection } from '@/lib/ziwei/plain-language-report';
 import type { AiReadingSection } from '@/lib/ai/reading-sections';
 import type { AiEvidenceAuditResult } from '@/components/AiEvidencePanel';
 import type { DeepGroundingResult } from '@/lib/ai/deep-grounding';
+import type { BirthInfo } from '@/lib/ziwei/types';
+import {
+  readingFeedbackScope, readingTextId, readReadingFeedback, writeReadingFeedback,
+  excerptForReading, READING_FEEDBACK_EVENT, readingFeedbackKey,
+  type ReadingFeedbackStore, type ReadingFeedbackChoice,
+} from '@/lib/ai/reading-feedback';
 
 export default function AiChapterReader({
-  fallback,chapters,audit,grounding,variant='basic',
+  fallback,chapters,audit,grounding,birthInfo,enableFeedback=true,variant='basic',
 }:{
   fallback:PlainSection[];
   chapters?:AiReadingSection[];
   audit?:AiEvidenceAuditResult|null;
   grounding?:DeepGroundingResult|null;
+  birthInfo:BirthInfo;
+  enableFeedback?:boolean;
   variant?:'basic'|'deep';
 }){
   const [active,setActive]=useState<OfflineTopic>('overview');
   const viewport=useRef<HTMLDivElement>(null);
   const cards=useRef<Partial<Record<OfflineTopic,HTMLElement|null>>>({});
   const isAi=Boolean(chapters?.length);
+  // Do not use the optional name as an identity key. The scope is a digest of the chart input.
+  const birthMarker=JSON.stringify(birthInfo);
+  const [feedbackState,setFeedbackState]=useState<{marker:string;scope:string;entries:ReadingFeedbackStore}|null>(null);
+  const [feedbackError,setFeedbackError]=useState('');
+  const feedbackScope=feedbackState?.marker===birthMarker?feedbackState.scope:null;
+  const feedback=feedbackScope?feedbackState?.entries??{}:{};
+  useEffect(()=>{
+    if(!enableFeedback)return;
+    let cancelled=false;
+    readingFeedbackScope(birthInfo).then(scope=>{
+      if(cancelled || !scope)return;
+      const refresh=()=>setFeedbackState({marker:birthMarker,scope,entries:readReadingFeedback(window.localStorage,scope)});
+      refresh();
+      window.addEventListener(READING_FEEDBACK_EVENT,refresh);
+      // Store the listener for cleanup in this effect's synchronous closure.
+      unsubscribe=()=>window.removeEventListener(READING_FEEDBACK_EVENT,refresh);
+    }).catch(()=>{if(!cancelled)setFeedbackError('当前浏览器无法保存解读反馈。');});
+    let unsubscribe=()=>{};
+    return ()=>{cancelled=true;unsubscribe();};
+  },[birthMarker,enableFeedback]);
+  const chooseFeedback=(id:string,topic:OfflineTopic,source:'offline'|'basic'|'deep',text:string,choice:ReadingFeedbackChoice)=>{
+    if(!feedbackScope)return;
+    const next={...feedback};
+    if(next[id]?.choice===choice)delete next[id];
+    else next[id]={id,topic,source,choice,excerpt:excerptForReading(text),updatedAt:Date.now()};
+    try{
+      writeReadingFeedback(window.localStorage,feedbackScope,next);
+      setFeedbackError('');
+      window.dispatchEvent(new Event(READING_FEEDBACK_EVENT));
+    }catch{setFeedbackError('保存失败，请检查浏览器是否禁用了本地存储。');}
+  };
+  const clearFeedback=()=>{
+    if(!feedbackScope||!window.confirm('清除当前命盘在此浏览器保存的全部解读反馈？'))return;
+    try{
+      window.localStorage.removeItem(readingFeedbackKey(feedbackScope));
+      setFeedbackError('');
+      window.dispatchEvent(new Event(READING_FEEDBACK_EVENT));
+    }catch{setFeedbackError('清除失败，请检查浏览器存储权限。');}
+  };
   useEffect(()=>{
     let frame=0;
     const update=()=>{
@@ -67,12 +114,23 @@ export default function AiChapterReader({
         </button>)}
       </div>
     </div>
+    {enableFeedback&&feedbackScope&&<div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs"
+      style={{color:'var(--t-text2)'}}>
+      <span>你的解读反馈：本机已记 {Object.keys(feedback).length} 条 · 不会上传或改变命盘</span>
+      {Object.keys(feedback).length>0&&<button type="button" onClick={clearFeedback}
+        className="min-h-11 underline" style={{color:'var(--t-text2)'}}>清除本命盘反馈</button>}
+    </div>}
+    {feedbackError&&<p role="alert" className="text-xs" style={{color:'#f59e0b'}}>{feedbackError}</p>}
     {OFFLINE_TOPICS.map((topic,i)=>{
       const section=fallback.find(s=>s.key===topic.key);
       const ai=chapters?.find(s=>s.key===topic.key);
       const ids=ai?.referenceIds??[];
       const references=audit?.cited.filter(ref=>ids.includes(ref.id))??[];
       const ground=variant==='deep'?grounding?.chapters.find(g=>g.topic===topic.key):undefined;
+      const feedbackSource=ai?variant:'offline';
+      const feedbackText=ai?.text??(section?[section.lead,section.observation,section.suggestion].join('\n'):'');
+      const feedbackId=readingTextId(feedbackSource,topic.key,feedbackText);
+      const selected=feedback[feedbackId]?.choice;
       return <article key={topic.key} id={'ai-chapter-'+variant+'-'+topic.key}
         ref={node=>{cards.current[topic.key]=node;}}
         className="rounded-xl p-4 sm:p-5 space-y-3 scroll-mt-36"
@@ -102,6 +160,22 @@ export default function AiChapterReader({
               ? 'AI 已引用本章本宫／对宫／三方的 '+ground.relevantCitations.length+' 项盘面资料；人生解释仍待本人核对。'
               : 'AI 未引用本章本宫／对宫／三方的可核查编号；下方事实由排盘引擎独立提供，不等于 AI 结论有依据。'}
             {' '}已识别到可核对事实 {ground.explicitFactMatches} 条，矛盾 {ground.explicitFactConflicts} 条（仅限固定句式）。
+          </p>}
+        </div>}
+        {enableFeedback&&feedbackScope&&feedbackText&&<div className="rounded-lg px-3 py-2 space-y-2"
+          style={{border:'1px solid var(--t-border)',background:'var(--t-card)'}}>
+          <p className="text-xs" style={{color:'var(--t-text2)'}}>这段解读与你的实际情况是否相符？（可不评价）</p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={topic.label+'解读反馈'}>
+            {([['agree','比较符合'],['partial','部分符合'],['disagree','不符合']] as const).map(([choice,label])=>
+              <button key={choice} type="button" aria-pressed={selected===choice}
+                onClick={()=>chooseFeedback(feedbackId,topic.key,feedbackSource,feedbackText,choice)}
+                className="min-h-11 px-3 rounded-lg text-xs"
+                style={{border:'1px solid var(--t-border)',
+                  background:selected===choice?'rgba(212,168,67,.15)':'transparent',
+                  color:selected===choice?'var(--t-gold)':'var(--t-text2)'}}>{label}</button>)}
+          </div>
+          {selected&&<p role="status" className="text-xs" style={{color:'var(--t-text2)'}}>
+            已保存到当前浏览器；再点一次已选项可撤销。不会自动发送给 AI。
           </p>}
         </div>}
         {isAi&&!ai&&<p className="text-xs leading-6" style={{color:'#f59e0b'}}>

@@ -195,7 +195,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       <div className="space-y-1">
         <h2 className="text-base font-semibold" style={{color:'var(--t-text)'}}>我的命盘解读</h2>
         <p className="text-xs leading-5" style={{color:'var(--t-text2)'}}>
-          不讲难懂的命理词，直接说日常怎么做事、最容易在哪儿吃亏。
+          从传统命盘看不同领域的特点与关联；每章可查看依据，也可以一键反馈是否符合。
         </p>
       </div>
       <button type="button" aria-expanded={open} onClick={()=>setOpen(v=>!v)}
@@ -232,7 +232,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
         </p>
         {notice&&<p role="alert" className="text-xs" style={{color:'#f59e0b'}}>{notice}</p>}
         {aiLab&&onSpecificityChange&&<AiSpecificityControl value={specificity} onChange={onSpecificityChange}/>}
-        <AiChapterReader fallback={sections} chapters={layChapters} audit={latestAi?.audit} variant="basic"/>
+        <AiChapterReader fallback={sections} chapters={layChapters} audit={latestAi?.audit} birthInfo={chart.birthInfo} variant="basic"/>
         {latestAi&&layChapters.length<6&&<p role="status" className="text-xs leading-6"
           style={{color:'#f59e0b'}}>
           AI 这次只按格式生成了 {layChapters.length}/6 个主题；其余使用命盘规则资料补足，不会把其他主题的内容硬塞进去。
@@ -282,7 +282,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
         </p>
         {deepError&&<p role="alert" className="text-xs" style={{color:'#f59e0b'}}>{deepError}</p>}
         {deepResult&&<>
-          <AiChapterReader fallback={sections} chapters={deepChapters} audit={deepResult.audit} grounding={deepResult.grounding} variant="deep"/>
+          <AiChapterReader fallback={sections} chapters={deepChapters} audit={deepResult.audit} grounding={deepResult.grounding} birthInfo={chart.birthInfo} variant="deep"/>
           {deepChapters.length<6&&<p role="status" className="text-xs leading-6" style={{color:'#f59e0b'}}>
             深度版只识别到 {deepChapters.length}/6 个主题，其余展示规则参考。
           </p>}

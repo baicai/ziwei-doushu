@@ -12,7 +12,8 @@ const sections = [
   ] },
   { title: '2. 本地保存', paragraphs: [
     '为方便下次使用，浏览器会在当前网站的本地存储中保存上一次提交的出生资料。数据未加密，请勿在共用设备上保留敏感资料。',
-    '可在排盘页面点击「清除保存资料」，也可以通过浏览器设置清理网站数据。更换设备或浏览器不会自动同步。',
+    '可在排盘页面点击「清除保存资料」删除出生资料，或通过浏览器设置清理全部网站数据。更换设备或浏览器不会自动同步。',
+    '你可以自愿对每段解读选择「比较符合／部分符合／不符合」。反馈按命盘输入的摘要标识与当时解读文本关联，仅保存在本机浏览器，不自动上传到服务器，也不自动发给 AI。每张命盘的反馈可在报告中单独清除；浏览器清除站点数据会同时删除反馈。',
   ] },
   { title: '3. AI 解读', paragraphs: [
     '只有在你主动点击「AI 深度解读」时，网站才会将当前命盘所需的出生资料、结构化宫位星曜信息及你输入的问题发送到服务端，再提交给第三方 AI 模型提供商 DeepSeek。',
@@ -24,7 +25,7 @@ const sections = [
     '网站还使用本地存储保存主题偏好。网络请求可能产生服务端日志，用于运行维护、安全检查和故障排查。',
   ] },
   { title: '5. 你的选择', paragraphs: [
-    '你可以不填写称呼、不使用 AI 解读，也可以随时删除本地保存的出生资料。',
+    '你可以不填写称呼、不使用 AI 解读、不评价报告，也可以随时删除本地保存的出生资料与解读反馈。',
     '如果需要了解第三方模型的数据处理政策，可查阅相应模型服务商的公开隐私说明。',
   ] },
   { title: '6. 政策更新', paragraphs: [
@@ -37,7 +38,7 @@ export default function PrivacyPage() {
     <main className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12" style={{ color: 'var(--t-text)' }}>
       <Link href="/" className="text-sm" style={{ color: 'var(--t-gold)' }}>← 返回首页</Link>
       <h1 className="mt-6 mb-2 text-2xl font-semibold">隐私政策</h1>
-      <p className="mb-8 text-xs" style={{ color: 'var(--t-faint)' }}>更新日期：2026 年 10 月 18 日</p>
+      <p className="mb-8 text-xs" style={{ color: 'var(--t-faint)' }}>更新日期：2026 年 10 月 24 日</p>
       {sections.map(section => (
         <section key={section.title} className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">{section.title}</h2>
