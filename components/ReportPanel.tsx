@@ -423,8 +423,10 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       </>}
       {aiLab&&<BlindEvaluationPanel birthInfo={chart.birthInfo} specificity={specificity}/>}
       {notice&&<p role="status" className="mt-3 text-xs" style={{color:'var(--t-text2)'}}>{notice}</p>}
-      <p className="mt-4 text-xs leading-6" style={{color:'var(--t-faint)'}}>
-        传统命盘是文化解释体系，不能证明个人性格、健康状况或未来事件。
+      <p role="note" className="mt-5 rounded-lg p-3 text-xs leading-6"
+        style={{color:'#f59e0b',background:'rgba(245,158,11,.06)',border:'1px solid rgba(245,158,11,.3)'}}>
+        提示：以上解读基于传统命盘取象，属于有待本人核对的文化解释，并非已经核实的个人经历；
+        不能据此确定性格、健康状况或未来事件，也不能替代医疗、投资等专业判断。
       </p>
     </>}
   </section>;

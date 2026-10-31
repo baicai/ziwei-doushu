@@ -11,6 +11,8 @@ for(const section of sections){
   assert(section.lead.length>12,section.key+' needs a clear opening');
   assert(section.suggestion.length>12,section.key+' needs a practical reflection');
   assert(section.evidence.length>5,section.key+' needs chart provenance');
+  assert(section.evidenceNote?.includes('不') === true,section.key+' must keep symbolic caveat in note');
+  assert(!section.evidence.includes('本节示例'),section.key+' evidence should not mix a note into the fact');
   assert(!section.lead.includes('离线规则解读'),'lay report must not use developer copy');
   assert(!section.lead.includes('本宫及三方四正'),'lay report must not dump terminology');
 }

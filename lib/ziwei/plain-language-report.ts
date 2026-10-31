@@ -13,6 +13,7 @@ export interface PlainSection {
   observation: string;
   suggestion: string;
   evidence: string;
+  evidenceNote?: string;
 }
 
 type Behavior={say:string;scene:string};
@@ -208,11 +209,13 @@ export function buildPlainSections(chart:ZiweiChart):PlainSection[] {
     const starNames=focus.stars.map(s=>s.name+(s.siHua?'化'+s.siHua:'')).join('、');
     const provenance=palace.name+(focus.borrowed?'（空宫，参考对宫星曜）':'')+
       '：'+(starNames||'没有直接主星')+'。'+
-      (chosen?'本节示例以'+chosen.name+'的传统象征为线索，并不说明用户确实做过这些事。':'')+
       (focus.borrowed?'来源宫位：'+(focus.origin?.name||'对宫')+'；不可理解成原宫有这些星。':'');
+    const evidenceNote=chosen
+      ? '本节示例以'+chosen.name+'的传统象征为线索，并不说明用户确实做过这些事。'
+      : '本节示例是传统命盘的解释参考，不代表用户确实有过相关经历。';
     return {
       key,title:TITLES[key],lead,observation,
-      suggestion:ACTIONS[key],evidence:provenance,
+      suggestion:ACTIONS[key],evidence:provenance,evidenceNote,
     };
   });
 }

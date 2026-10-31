@@ -7,6 +7,7 @@ import type { AiReadingSection } from '@/lib/ai/reading-sections';
 import type { AiEvidenceAuditResult } from '@/components/AiEvidencePanel';
 import type { DeepGroundingResult } from '@/lib/ai/deep-grounding';
 import type { BirthInfo } from '@/lib/ziwei/types';
+import { splitReadingForFeedback } from '@/lib/ai/reading-presentation';
 import {
   readingFeedbackScope, readingTextId, readReadingFeedback, writeReadingFeedback,
   excerptForReading, READING_FEEDBACK_EVENT, readingFeedbackKey,
@@ -38,7 +39,8 @@ export default function AiChapterReader({
     if(!enableFeedback)return;
     let cancelled=false;
     readingFeedbackScope(birthInfo).then(scope=>{
-      if(cancelled || !scope)return;
+      if(cancelled)return;
+      if(!scope){setFeedbackError('当前浏览器无法保存解读反馈，已显示完整解读。');return;}
       const refresh=()=>setFeedbackState({marker:birthMarker,scope,entries:readReadingFeedback(window.localStorage,scope)});
       refresh();
       window.addEventListener(READING_FEEDBACK_EVENT,refresh);
@@ -128,75 +130,76 @@ export default function AiChapterReader({
       const references=audit?.cited.filter(ref=>ids.includes(ref.id))??[];
       const ground=variant==='deep'?grounding?.chapters.find(g=>g.topic===topic.key):undefined;
       const feedbackSource=ai?variant:'offline';
+      // Keep existing content fingerprints: old feedback remains attached to the exact
+      // reading even though the visible presentation now progressively reveals it.
       const feedbackText=ai?.text??(section?[section.lead,section.observation,section.suggestion].join('\n'):'');
       const feedbackId=readingTextId(feedbackSource,topic.key,feedbackText);
       const selected=feedback[feedbackId]?.choice;
+      const aiReading=ai?splitReadingForFeedback(ai.text):null;
+      const lead=aiReading?.lead??section?.lead??'当前缺少这部分分析。';
+      const details=aiReading?.details??'';
+      const expanded=!!selected||!enableFeedback||!!feedbackError;
+      const evidenceNote=ai
+        ? '本节生活情境仅用于说明传统命盘的解释方向，不表示你确实做过这些事。'
+        : section?.evidenceNote??'本节是传统命盘解释参考，不表示已核实个人经历。';
       return <article key={topic.key} id={'ai-chapter-'+variant+'-'+topic.key}
         ref={node=>{cards.current[topic.key]=node;}}
         className="rounded-xl p-4 sm:p-5 space-y-3 scroll-mt-36"
         style={{border:'1px solid var(--t-border)',background:'var(--t-surface)'}}>
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="font-semibold text-base" style={{color:'var(--t-gold)'}}>
-            {i+1}. {topic.label}
-          </h3>
-          <span className="text-xs" style={{color:'var(--t-faint)'}}>
-            {ai?'DeepSeek':'命盘规则参考'}
-          </span>
-        </div>
-        {ai?<p className="text-[15px] leading-8 whitespace-pre-wrap break-words"
-          style={{color:'var(--t-text)'}}>{ai.text}</p>
-        :section?<div className="space-y-2">
-          <p className="text-[15px] leading-8 font-medium" style={{color:'var(--t-text)'}}>{section.lead}</p>
-          <p className="text-sm leading-7" style={{color:'var(--t-text2)'}}>{section.observation}</p>
-          <p className="text-sm leading-7" style={{color:'var(--t-text2)'}}>{section.suggestion}</p>
-        </div>:<p className="text-sm" style={{color:'var(--t-text2)'}}>当前缺少这部分分析。</p>}
-        {ground?.focus&&<div className="rounded-lg p-3 text-xs leading-6 space-y-1"
-          style={{border:'1px solid var(--t-border)',background:'var(--t-card)',color:'var(--t-text2)'}}>
-          <p className="font-semibold">本章排盘事实 · 非 AI 推断</p>
-          <p>[{ground.focus.id}] {ground.focus.fact}</p>
-          {ground.opposite&&<p>对宫参考 [{ground.opposite.id}] {ground.opposite.fact}</p>}
-          {ai&&<p style={{color:ground.hasRelevantCitation?'var(--t-text2)':'#f59e0b'}}>
-            {ground.hasRelevantCitation
-              ? 'AI 已引用本章本宫／对宫／三方的 '+ground.relevantCitations.length+' 项盘面资料；人生解释仍待本人核对。'
-              : 'AI 未引用本章本宫／对宫／三方的可核查编号；下方事实由排盘引擎独立提供，不等于 AI 结论有依据。'}
-            {' '}已识别到可核对事实 {ground.explicitFactMatches} 条，矛盾 {ground.explicitFactConflicts} 条（仅限固定句式）。
-          </p>}
+        <h3 className="font-semibold text-base" style={{color:'var(--t-gold)'}}>
+          {i+1}. {topic.label}
+        </h3>
+
+        <p className="text-[15px] leading-8 font-semibold break-words" style={{color:'var(--t-text)'}}>
+          {lead}
+        </p>
+        {enableFeedback&&feedbackScope&&feedbackText&&<div className="flex flex-wrap gap-2"
+          role="group" aria-label={topic.label+'解读反馈'}>
+          {([['agree','比较符合'],['partial','部分符合'],['disagree','不符合']] as const).map(([choice,label])=>
+            <button key={choice} type="button" aria-pressed={selected===choice}
+              aria-controls={'ai-chapter-details-'+variant+'-'+topic.key}
+              aria-expanded={expanded}
+              onClick={()=>chooseFeedback(feedbackId,topic.key,feedbackSource,feedbackText,choice)}
+              className="min-h-11 rounded-lg px-3 sm:px-4 text-sm transition-colors"
+              style={{
+                border:selected===choice?'1px solid rgba(212,168,67,.5)':'1px solid var(--t-border)',
+                background:selected===choice?'rgba(212,168,67,.15)':'transparent',
+                color:selected===choice?'var(--t-gold)':'var(--t-text2)',
+                fontWeight:selected===choice?600:400,
+              }}>{label}</button>)}
         </div>}
-        {enableFeedback&&feedbackScope&&feedbackText&&<div className="rounded-lg px-3 py-2 space-y-2"
-          style={{border:'1px solid var(--t-border)',background:'var(--t-card)'}}>
-          <p className="text-xs" style={{color:'var(--t-text2)'}}>这段解读与你的实际情况是否相符？（可不评价）</p>
-          <div className="flex flex-wrap gap-2" role="group" aria-label={topic.label+'解读反馈'}>
-            {([['agree','比较符合'],['partial','部分符合'],['disagree','不符合']] as const).map(([choice,label])=>
-              <button key={choice} type="button" aria-pressed={selected===choice}
-                onClick={()=>chooseFeedback(feedbackId,topic.key,feedbackSource,feedbackText,choice)}
-                className="min-h-11 px-3 rounded-lg text-xs"
-                style={{border:'1px solid var(--t-border)',
-                  background:selected===choice?'rgba(212,168,67,.15)':'transparent',
-                  color:selected===choice?'var(--t-gold)':'var(--t-text2)'}}>{label}</button>)}
-          </div>
-          {selected&&<p role="status" className="text-xs" style={{color:'var(--t-text2)'}}>
-            已保存到当前浏览器；再点一次已选项可撤销。不会自动发送给 AI。
-          </p>}
+
+        {expanded&&<div id={'ai-chapter-details-'+variant+'-'+topic.key}
+          className="space-y-4 pt-3" style={{borderTop:'1px solid var(--t-border)'}}>
+          {aiReading?details&&<p className="text-sm leading-8 whitespace-pre-wrap break-words"
+            style={{color:'var(--t-text2)'}}>{details}</p>
+          :section&&<div className="space-y-2">
+            <p className="text-sm leading-8" style={{color:'var(--t-text2)'}}>{section.observation}</p>
+            <p className="text-sm leading-8" style={{color:'var(--t-text2)'}}>{section.suggestion}</p>
+          </div>}
+          <section className="rounded-lg p-3 space-y-2"
+            style={{background:'var(--t-card)',border:'1px solid var(--t-border)'}}>
+            <h4 className="font-semibold text-sm" style={{color:'var(--t-text)'}}>命盘依据</h4>
+            <div className="text-xs leading-7 space-y-1" style={{color:'var(--t-text2)'}}>
+              {ground?.focus?<div className="space-y-1">
+                <p>{ground.focus.fact}</p>
+                {ground.opposite&&<p>对宫：{ground.opposite.fact}</p>}
+              </div>:<p>{section?.evidence??'当前缺少可核对的宫位依据。'}</p>}
+              {references.length>0&&<div className="space-y-1">
+                {references.map(ref=><p key={ref.id}>[{ref.id}] {ref.fact}</p>)}
+              </div>}
+              {ai&&ids.length>0&&references.length===0&&
+                <p style={{color:'#f59e0b'}}>本节引用编号尚未核实。</p>}
+            </div>
+            <p className="text-xs leading-6 pt-2" style={{
+              color:'var(--t-faint)',borderTop:'1px solid var(--t-border)'}}>
+              {evidenceNote}
+            </p>
+          </section>
         </div>}
         {isAi&&!ai&&<p className="text-xs leading-6" style={{color:'#f59e0b'}}>
-          AI 这次没有按要求生成该主题，下面保留命盘规则解读供参考。
+          AI 这次未完整生成该主题，显示的是命盘规则参考内容。
         </p>}
-        <details className="rounded-lg px-3" style={{border:'1px solid var(--t-border)'}}>
-          <summary className="cursor-pointer flex items-center min-h-11 text-sm"
-            style={{color:'var(--t-text2)'}}>为什么这样说？展开查看对应命盘依据</summary>
-          <div className="pb-3 space-y-2 text-xs leading-6" style={{color:'var(--t-text2)'}}>
-            <p>{section?.evidence||'尚无对应的命盘规则资料。'}</p>
-            {ground&&<p>本章事实由排盘引擎直接生成，AI 的生活推测不能仅凭引用编号获得真实性背书。</p>}
-            {references.length>0&&<div>
-              <p className="font-medium">AI 引用的盘面资料：</p>
-              {references.map(ref=><p key={ref.id}>[{ref.id}] {ref.fact}</p>)}
-            </div>}
-            {ai&&ids.length>0&&references.length===0&&
-              <p>模型引用的编号尚未核实，请在完整事实检查中复核。</p>}
-            <p>这里说明传统取象所依据的盘面结构，不代表这些人生判断已被事实验证。</p>
-          </div>
-        </details>
       </article>;
-    })}
   </div>;
 }
