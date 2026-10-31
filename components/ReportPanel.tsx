@@ -17,6 +17,7 @@ import ReportFollowup from '@/components/ReportFollowup';
 import WealthEvidencePanel from '@/components/WealthEvidencePanel';
 import DeepTimeMap from '@/components/DeepTimeMap';
 import { parseSixTopicAnswer } from '@/lib/ai/reading-sections';
+import {filterUsableChapters} from '@/lib/ai/reading-quality';
 import type { DeepGroundingResult } from '@/lib/ai/deep-grounding';
 
 export function buildChartReport(chart: ZiweiChart, year: number): string {
@@ -115,15 +116,25 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
       warnings:{code:string;message:string;topics:string[]}[];limitation:string;}|null;
   }|null>(null);
   const [deepError,setDeepError]=useState('');
+  const [modelReady,setModelReady]=useState<boolean|null>(null);
   const sections=useMemo(()=>buildPlainSections(chart),[chart]);
   const plainText=useMemo(()=>buildPlainTextReport(chart,year),[chart,year]);
   const evidenceText=useMemo(()=>buildChartReport(chart,year),[chart,year]);
   const visible=version==='plain'?plainText:evidenceText;
   const latestAi=aiRuns[aiRuns.length-1];
-  const layChapters=useMemo(()=>parseSixTopicAnswer(latestAi?.answer||''),[latestAi?.answer]);
-  const deepChapters=useMemo(()=>parseSixTopicAnswer(deepResult?.answer||''),[deepResult?.answer]);
+  const layChapters=useMemo(()=>filterUsableChapters(parseSixTopicAnswer(latestAi?.answer||'')),[latestAi?.answer]);
+  const deepChapters=useMemo(()=>filterUsableChapters(parseSixTopicAnswer(deepResult?.answer||'')),[deepResult?.answer]);
 
   useEffect(()=>{setAiRuns([]);setDeepResult(null);setDeepError('');setNotice('');},[chart]);
+  useEffect(()=>{
+    let cancelled=false;
+    fetch('/api/interpret',{cache:'no-store'}).then(r=>r.json()).then((v:unknown)=>{
+      if(cancelled)return;
+      const item=v&&typeof v==='object'?v as Record<string,unknown>:null;
+      setModelReady(item?.available===true);
+    }).catch(()=>{if(!cancelled)setModelReady(null);});
+    return ()=>{cancelled=true;};
+  },[]);
 
   const requestAi=async()=>{
     if(aiBusy)return;
@@ -218,7 +229,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
               {layChapters.length?'正在阅读 DeepSeek 为这张盘生成的解读。':'先展示无需等待的命盘规则解读；生成后这里直接换成 DeepSeek 通俗版。'}
             </p>
           </div>
-          <button type="button" disabled={aiBusy} onClick={requestAi}
+          <button type="button" disabled={aiBusy||modelReady===false} onClick={requestAi}
             className="min-h-11 rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50"
             style={{color:'var(--t-gold)',border:'1px solid rgba(212,168,67,.5)',
               background:'rgba(212,168,67,.10)'}}>
@@ -229,12 +240,16 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
           AI 解读需要你主动点击才会生成；点击后当前命盘资料会发送至 DeepSeek 并产生一次模型调用。
           六个主题可以上下滑动；先显示核心判断，选择评价后查看示例、命盘依据和备注。
         </p>
+        {modelReady===false&&<p role="status" className="rounded-lg px-3 py-2 text-xs leading-6"
+          style={{color:'#f59e0b',border:'1px solid rgba(245,158,11,.3)'}}>
+          AI 服务目前无法使用；命盘规则解读不受影响。服务恢复后可刷新页面重试。
+        </p>}
         {notice&&<p role="alert" className="text-xs" style={{color:'#f59e0b'}}>{notice}</p>}
         {aiLab&&onSpecificityChange&&<AiSpecificityControl value={specificity} onChange={onSpecificityChange}/>}
         <AiChapterReader fallback={sections} chapters={layChapters} audit={latestAi?.audit} birthInfo={chart.birthInfo} variant="basic"/>
         {latestAi&&layChapters.length<6&&<p role="status" className="text-xs leading-6"
           style={{color:'#f59e0b'}}>
-          AI 这次只按格式生成了 {layChapters.length}/6 个主题；其余使用命盘规则资料补足，不会把其他主题的内容硬塞进去。
+          AI 这次仅有 {layChapters.length}/6 个主题通过可读性检查；缺失或用免责声明代替结论的章节已改用规则解读。
         </p>}
         {latestAi&&layChapters.length===0&&<details className="rounded-lg p-3"
           style={{border:'1px solid var(--t-border)'}}>
@@ -276,7 +291,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
           对照反例和能尝试的做法讲透。将来可作为付费内容，目前完整开放，不需要支付。
         </p>
         <DeepTimeMap chart={chart} year={year}/>
-        <button type="button" disabled={deepBusy} onClick={requestDeep}
+        <button type="button" disabled={deepBusy||modelReady===false} onClick={requestDeep}
           className="min-h-11 rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50"
           style={{color:'var(--t-gold)',border:'1px solid rgba(212,168,67,.5)'}}>
           {deepBusy?'正在生成深度版…':deepResult?'重新生成深度版':'免费解锁完整深度分析'}
@@ -285,11 +300,14 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
           上方阶段时间地图无需 AI 即可查看。点击后 DeepSeek 才会收到本命及所选年份的结构化时间资料；目前不收费、没有付款或自动续费。
           后续启用真实付费前，需要独立实现购买凭证与服务端权限校验。
         </p>
+        {modelReady===false&&<p role="status" className="text-xs leading-6" style={{color:'#f59e0b'}}>
+          AI 服务当前不可用；无需反复点击。仍可查看命盘与人生阶段资料。
+        </p>}
         {deepError&&<p role="alert" className="text-xs" style={{color:'#f59e0b'}}>{deepError}</p>}
         {deepResult&&<>
           <AiChapterReader fallback={sections} chapters={deepChapters} audit={deepResult.audit} grounding={deepResult.grounding} birthInfo={chart.birthInfo} variant="deep"/>
           {deepChapters.length<6&&<p role="status" className="text-xs leading-6" style={{color:'#f59e0b'}}>
-            深度版只识别到 {deepChapters.length}/6 个主题，其余展示规则参考。
+            深度版仅有 {deepChapters.length}/6 个主题通过可读性检查；其余展示规则解读。
           </p>}
           {deepChapters.length===0&&<details><summary className="cursor-pointer min-h-11">
             查看未按章节生成的深度版 AI 原文

@@ -19,6 +19,11 @@ import { offlineTopicAnalysis, OFFLINE_TOPICS, type OfflineTopic } from '@/lib/z
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
+/** Public, non-secret readiness check; no charge or personal information. */
+export async function GET(){
+  return NextResponse.json({available:Boolean(resolveAiProvider('deepseek'))},
+    {headers:{'Cache-Control':'no-store'}});
+}
 const TOPICS = new Set<string>(OFFLINE_TOPICS.map(t => t.key));
 const calls = new Map<string,{count:number;expires:number}>();
 const MAX_REQUESTS = 6;
