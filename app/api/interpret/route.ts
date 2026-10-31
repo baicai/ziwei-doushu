@@ -10,6 +10,7 @@ import { HYPOTHESIS_FORMAT_INSTRUCTIONS, parseReviewableHypotheses } from '@/lib
 import { LAY_WRITING_PROMPT, LAY_WRITING_VERSION, DEEP_READING_PROMPT, DEEP_READING_VERSION } from '@/lib/ai/lay-writing';
 import { sixTopicFormatComplete } from '@/lib/ai/reading-sections';
 import { buildDeepReadingContext } from '@/lib/ai/deep-context';
+import { buildDeepTimeContext } from '@/lib/ai/deep-time';
 import { assessDeepReportQuality } from '@/lib/ai/deep-quality';
 import { buildDeepChapterGrounding } from '@/lib/ai/deep-grounding';
 import type { BirthInfo } from '@/lib/ziwei/types';
@@ -58,6 +59,8 @@ export async function POST(request: NextRequest) {
   const readingStyle=payload.style==='plain'?'plain':'standard';
   const readingTier=payload.readingTier==='deep'?'deep':'basic';
   const specificity=parseSpecificity(payload.specificity);
+  const requestedYear=typeof payload.timeYear==='number' && Number.isInteger(payload.timeYear)
+    && payload.timeYear>=1900 && payload.timeYear<=2200 ? payload.timeYear : new Date().getUTCFullYear();
   // Only bounded conversational context is accepted; model facts always come from the rebuilt chart.
   const historyInput: unknown = payload.history;
   const history: AiChatMessage[] = Array.isArray(historyInput) ? historyInput.slice(-6).flatMap(item => {
@@ -93,6 +96,7 @@ export async function POST(request: NextRequest) {
     const context=chart.palaces.map(p=>({name:p.name,branch:p.branch,stem:p.stem,stars:p.stars.map(s=>({name:s.name,type:s.type,siHua:s.siHua,brightness:s.brightnessRaw}))}));
     const refs=(specificity>=20||readingTier==='deep') ? sourceCatalog.map(e=>({id:e.id,fact:e.fact})) : undefined;
     const deepFacts=readingTier==='deep'?buildDeepReadingContext(chart):undefined;
+    const deepTime=readingTier==='deep'?buildDeepTimeContext(chart,requestedYear):undefined;
     const ctrl=new AbortController();
     const timeout=setTimeout(()=>ctrl.abort(),45000);
     let response:Response;
@@ -113,7 +117,7 @@ export async function POST(request: NextRequest) {
 
             {role:'system',content:controlledPrompt},
             ...history,
-            {role:'user',content:JSON.stringify({topic,question,chart:{timePrecision:chart.birthInfo.timePrecision ?? 'known',lunarInfo:chart.lunarInfo,mingGongBranch:chart.mingGongBranch,wuxingJuName:chart.wuxingJuName,palaces:context},ruleEvidence:evidence,evidenceReferences:refs,deepChapterEvidence:deepFacts})}
+            {role:'user',content:JSON.stringify({topic,question,chart:{timePrecision:chart.birthInfo.timePrecision ?? 'known',lunarInfo:chart.lunarInfo,mingGongBranch:chart.mingGongBranch,wuxingJuName:chart.wuxingJuName,palaces:context},ruleEvidence:evidence,evidenceReferences:refs,deepChapterEvidence:deepFacts,deepTimeContext:deepTime})}
           ]),max_tokens:readingTier==='deep'?3500:1800}),signal:ctrl.signal,
       });
     } finally {clearTimeout(timeout);}

@@ -13,6 +13,7 @@ import { parseReviewableHypotheses } from '@/lib/ai/hypotheses';
 import { DIRECT_USER_QUESTION } from '@/lib/ai/lay-writing';
 import BlindEvaluationPanel from '@/components/BlindEvaluationPanel';
 import AiChapterReader from '@/components/AiChapterReader';
+import DeepTimeMap from '@/components/DeepTimeMap';
 import { parseSixTopicAnswer } from '@/lib/ai/reading-sections';
 import type { DeepGroundingResult } from '@/lib/ai/deep-grounding';
 
@@ -164,7 +165,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({birthInfo:chart.birthInfo,topic:'overview',style:'plain',
-          readingTier:'deep',specificity:Math.max(20,specificity),
+          readingTier:'deep',specificity:Math.max(20,specificity),timeYear:year,
           question:'请写六个主题的深度版白话解读，比基础版更具体：遇事怎么做、为何容易吃亏、怎样用过去经历核对，以及这周能怎么改。不要编造我的真实经历。'}),
       });
       const data:unknown=await response.json().catch(()=>null);
@@ -268,16 +269,17 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
             style={{background:'rgba(212,168,67,.12)',color:'var(--t-gold)'}}>当前限时免费</span>
         </div>
         <p className="text-sm leading-7" style={{color:'var(--t-text2)'}}>
-          不只是看你像什么人，还把六个方面容易出现的矛盾、具体生活情景、
+          结合本命宫位、大限阶段与所选流年，把六个方面容易出现的矛盾、具体生活情景、
           对照反例和能尝试的做法讲透。将来可作为付费内容，目前完整开放，不需要支付。
         </p>
+        <DeepTimeMap chart={chart} year={year}/>
         <button type="button" disabled={deepBusy} onClick={requestDeep}
           className="min-h-11 rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50"
           style={{color:'var(--t-gold)',border:'1px solid rgba(212,168,67,.5)'}}>
           {deepBusy?'正在生成深度版…':deepResult?'重新生成深度版':'免费解锁完整深度分析'}
         </button>
         <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
-          点击才会进行一次额外 DeepSeek 调用并发送命盘资料；目前不收费、没有付款或自动续费。
+          上方阶段时间地图无需 AI 即可查看。点击后 DeepSeek 才会收到本命及所选年份的结构化时间资料；目前不收费、没有付款或自动续费。
           后续启用真实付费前，需要独立实现购买凭证与服务端权限校验。
         </p>
         {deepError&&<p role="alert" className="text-xs" style={{color:'#f59e0b'}}>{deepError}</p>}
