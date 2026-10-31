@@ -13,6 +13,8 @@ import { parseReviewableHypotheses } from '@/lib/ai/hypotheses';
 import { DIRECT_USER_QUESTION } from '@/lib/ai/lay-writing';
 import BlindEvaluationPanel from '@/components/BlindEvaluationPanel';
 import AiChapterReader from '@/components/AiChapterReader';
+import ReportFollowup from '@/components/ReportFollowup';
+import WealthEvidencePanel from '@/components/WealthEvidencePanel';
 import DeepTimeMap from '@/components/DeepTimeMap';
 import { parseSixTopicAnswer } from '@/lib/ai/reading-sections';
 import type { DeepGroundingResult } from '@/lib/ai/deep-grounding';
@@ -95,12 +97,9 @@ function ProfessionalReport({report}:{report:string}) {
   </div>;
 }
 
-export default function ReportPanel({ chart, year, specificity=0, aiLab=false, onSpecificityChange,
-  onBasicAiReady,onBasicAiClear }: {
+export default function ReportPanel({ chart, year, specificity=0, aiLab=false, onSpecificityChange }: {
   chart: ZiweiChart; year: number; specificity?: number; aiLab?: boolean;
   onSpecificityChange?: (value:number)=>void;
-  onBasicAiReady?:(answer:string,audit:ReturnType<typeof toEvidenceAudit>)=>void;
-  onBasicAiClear?:()=>void;
 }) {
   const [open,setOpen]=useState(true);
   const [version,setVersion]=useState<'plain'|'evidence'>('plain');
@@ -145,7 +144,6 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
         typeof parsed?.error==='string'?parsed.error:'AI 暂时不可用，请稍后再试。');
       const hypothesisCheck=specificity>=80?parseReviewableHypotheses(parsed.answer):null;
       const audit=toEvidenceAudit(parsed.evidenceAudit,parsed.factualAudit);
-      onBasicAiReady?.(parsed.answer,audit);
       setAiRuns(prev=>[...prev,{answer:parsed.answer as string,specificity,audit,
         model:typeof parsed.model==='string'?parsed.model:'unknown',
         writingVersion:typeof parsed.writingVersion==='string'?parsed.writingVersion:'untracked',review:null,note:'',
@@ -229,7 +227,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
         </div>
         <p className="text-xs leading-6" style={{color:'var(--t-text2)'}}>
           AI 解读需要你主动点击才会生成；点击后当前命盘资料会发送至 DeepSeek 并产生一次模型调用。
-          六个主题可以直接上下滑动，顶部标签自动跟随当前阅读位置；点某一条下面的「为什么这样说」即可查看对应命盘描述。
+          六个主题可以上下滑动；先显示核心判断，选择评价后查看示例、命盘依据和备注。
         </p>
         {notice&&<p role="alert" className="text-xs" style={{color:'#f59e0b'}}>{notice}</p>}
         {aiLab&&onSpecificityChange&&<AiSpecificityControl value={specificity} onChange={onSpecificityChange}/>}
@@ -244,6 +242,11 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
           <p className="text-sm leading-7 whitespace-pre-wrap">{latestAi.answer}</p>
         </details>}
         {latestAi&&<AiEvidencePanel audit={latestAi.audit}/>}
+        <details className="rounded-lg" style={{border:'1px solid var(--t-border)'}}>
+          <summary className="min-h-11 flex items-center cursor-pointer p-3 text-xs"
+            style={{color:'var(--t-text2)'}}>财运专题 · 查看结构化命盘依据</summary>
+          <div className="px-3 pb-3"><WealthEvidencePanel chart={chart} year={year}/></div>
+        </details>
         <div className="flex flex-wrap gap-3">
           <button type="button" className="min-h-11 underline text-xs"
             style={{color:'var(--t-text2)'}}
@@ -310,6 +313,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
             className="min-h-11 text-xs underline" style={{color:'var(--t-gold)'}}>保存完整深度分析</button>
         </>}
       </section>
+      <ReportFollowup key={JSON.stringify(chart.birthInfo)} chart={chart} specificity={specificity}/>
       {aiLab&&<>
       <div className="mt-5 rounded-xl p-4 space-y-2" style={{border:'1px solid var(--t-border)'}}>
         <h3 className="font-semibold text-sm" style={{color:'var(--t-text)'}}>通俗版实验反馈（不再次调用模型）</h3>
@@ -321,7 +325,7 @@ export default function ReportPanel({ chart, year, specificity=0, aiLab=false, o
             <p className="text-xs" style={{color:'var(--t-text2)'}}>
               {aiLab?'保留最近 4 次结果，方便对照不同明确度。':'本次 AI 分析结果'}
             </p>
-            <button type="button" onClick={()=>{setAiRuns([]);onBasicAiClear?.();}}
+            <button type="button" onClick={()=>setAiRuns([])}
               className="min-h-11 text-xs underline" style={{color:'var(--t-text2)'}}>清空 AI 分析</button>
           </div>
           {aiLab&&<div className="rounded-xl p-3 space-y-2" style={{border:'1px solid var(--t-border)'}}>

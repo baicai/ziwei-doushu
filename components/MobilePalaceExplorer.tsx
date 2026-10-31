@@ -1,9 +1,9 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import type { Palace, Star, ZiweiChart } from '@/lib/ziwei/types';
-import { BRANCHES, STEMS } from '@/lib/ziwei/constants';
-import { buildSiHuaOverlay, getYearStemIndex, type TimeView } from './TimeNav';
+import type { Palace, ZiweiChart } from '@/lib/ziwei/types';
+import { BRANCHES } from '@/lib/ziwei/constants';
+import type { TimeView } from './TimeNav';
 import ChartBoard from './ChartBoard';
 
 type MobilePalaceExplorerProps = {
@@ -28,19 +28,10 @@ function palaceSummary(palace: Palace): string {
   return '空宫 · 参考对宫';
 }
 
-function starCaption(star: Star, overlay: Record<string, string>): string {
-  const details = [];
-  if (star.brightnessRaw) details.push(star.brightnessRaw);
-  if (star.siHua) details.push('生年化' + star.siHua);
-  if (overlay[star.name]) details.push('所选时间化' + overlay[star.name]);
-  return star.name + (details.length ? ' · ' + details.join(' · ') : '');
-}
-
 export default function MobilePalaceExplorer({
   chart, selectedPalace, onSelect, onClear, timeView, liunianYear,
 }: MobilePalaceExplorerProps) {
   const [mode, setMode] = useState<'overview' | 'chart'>('overview');
-  const detailRef = useRef<HTMLDivElement>(null);
   const tabRef = useRef<HTMLDivElement>(null);
   const switchMode = (next: 'overview' | 'chart') => {
     setMode(next);
@@ -52,28 +43,11 @@ export default function MobilePalaceExplorer({
     ?? chart.palaces.find(p => p.isMingGong)
     ?? chart.palaces.find(p => shortName(p.name) === '命')
     ?? ordered[0];
-  const dx = chart.daXians?.[chart.currentDaXianIndex];
-  const dxPalace = dx && chart.palaces.find(p => p.branch === dx.palaceBranch);
-  const overlayStem = timeView === 'daxian' ? dxPalace?.stem :
-    timeView === 'liunian' && Number.isInteger(liunianYear)
-      && liunianYear >= 1900 && liunianYear <= 2200 ? getYearStemIndex(liunianYear) : undefined;
-  const overlay = overlayStem !== undefined && Number.isInteger(overlayStem)
-    && overlayStem >= 0 && overlayStem < 10 ? buildSiHuaOverlay(overlayStem) : {};
-
   const selectPalace = (palace: Palace, scroll = true) => {
     onSelect(palace);
-    if (scroll && mode === 'overview') {
-      // The detail card stays mounted, so selecting a palace can reveal it immediately.
-      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if(scroll) requestAnimationFrame(()=>
+      document.getElementById('chart-palace-detail')?.scrollIntoView({behavior:'smooth',block:'start'}));
   };
-
-  const relatives = current ? [
-    { label: '对宫', branch: (current.branch + 6) % 12 },
-    { label: '三合', branch: (current.branch + 4) % 12 },
-    { label: '三合', branch: (current.branch + 8) % 12 },
-  ].map(rel => ({ ...rel, palace: chart.palaces.find(p => p.branch === rel.branch) }))
-    .filter((rel): rel is { label: string; branch: number; palace: Palace } => !!rel.palace) : [];
 
   return (
     <section className="min-w-0" aria-label="手机版十二宫">
@@ -128,77 +102,18 @@ export default function MobilePalaceExplorer({
             })}
           </div>
 
-          {current && (
-            <div ref={detailRef} id="mobile-palace-detail" className="mt-4 rounded-xl p-4"
-              aria-live="polite"
-              style={{ background: 'var(--t-card)', border: '1px solid var(--t-border)', scrollMarginTop: 'calc(var(--ziwei-nav-height,60px) + 64px)' }}>
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div>
-                  <h2 className="text-lg font-semibold" style={{ color: 'var(--t-gold)' }}>
-                    {current.name}
-                  </h2>
-                  <p className="text-xs mt-1" style={{ color: 'var(--t-faint)' }}>
-                    {STEMS[current.stem]}{BRANCHES[current.branch]}
-                    {current.isMingGong ? ' · 命宫' : ''}
-                    {current.isShenGong ? ' · 身宫' : ''}
-                    {current.daXianAge ? ' · ' + current.daXianAge.join('–') + '岁' : ''}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <h3 className="text-xs font-semibold mb-1" style={{ color: 'var(--t-text)' }}>主星</h3>
-                  <p className="text-sm leading-6" style={{ color: 'var(--t-text2)' }}>
-                    {majorStars(current).length
-                      ? majorStars(current).map(s => starCaption(s, overlay)).join('；')
-                      : palaceSummary(current)}
-                  </p>
-                </div>
-                {(['lucky', 'minor', 'sha'] as const).map(kind => {
-                  const items = current.stars.filter(s => s.type === kind);
-                  if (!items.length) return null;
-                  const heading = kind === 'lucky' ? '辅星' : kind === 'minor' ? '其他星曜' : '煞星';
-                  return (
-                    <div key={kind}>
-                      <h3 className="text-xs font-semibold mb-1" style={{ color: 'var(--t-text)' }}>{heading}</h3>
-                      <p className="text-xs leading-6" style={{ color: 'var(--t-text2)' }}>
-                        {items.map(s => starCaption(s, overlay)).join('；')}
-                      </p>
-                    </div>
-                  );
-                })}
-                <div>
-                  <h3 className="text-xs font-semibold mb-2" style={{ color: 'var(--t-text)' }}>三方四正</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {relatives.map(rel => (
-                      <button type="button" key={rel.branch}
-                        onClick={() => selectPalace(rel.palace, false)}
-                        className="rounded-lg min-h-11 px-3 py-2 text-xs text-left"
-                        style={{ color: 'var(--t-text2)', border: '1px solid var(--t-border)' }}>
-                        {rel.label} · {rel.palace.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <p className="mt-3 text-xs" style={{ color: 'var(--t-faint)' }}>
-                下方「命盘解读」将同步显示所选宫位的详细解释。
-              </p>
-            </div>
-          )}
         </>
       ) : (
         <>
           <p className="text-xs mb-2" style={{ color: 'var(--t-faint)' }}>
-            向左右滑动查看完整命盘，点选宫位可查看下方解读。
+            向左右滑动查看完整命盘，点选宫位可在下方「命盘详情」查看资料。
           </p>
           <div className="overflow-x-auto overscroll-x-contain rounded-xl"
             aria-label="完整命盘，可横向滑动">
             <div className="min-w-[600px]">
               <ChartBoard chart={chart} timeView={timeView} liunianYear={liunianYear}
                 selectedBranch={selectedPalace?.branch ?? null}
-                onPalaceSelect={onSelect} onPalaceClear={onClear} />
+                onPalaceSelect={palace=>selectPalace(palace)} onPalaceClear={onClear} />
             </div>
           </div>
         </>

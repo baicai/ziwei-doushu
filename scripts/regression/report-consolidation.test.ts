@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {readFileSync,existsSync} from 'node:fs';
+const page=readFileSync('app/chart/page.tsx','utf8');
+const detail=readFileSync('components/PalaceDetailPanel.tsx','utf8');
+const report=readFileSync('components/ReportPanel.tsx','utf8');
+const follow=readFileSync('components/ReportFollowup.tsx','utf8');
+const mobile=readFileSync('components/MobilePalaceExplorer.tsx','utf8');
+assert(!existsSync('components/InsightPanel.tsx'));
+assert(page.includes('<PalaceDetailPanel')&&page.includes('<ReportPanel'));
+assert(!page.includes('sharedBasicAi'));
+assert(detail.includes('命盘详情')&&detail.includes('三方四正')&&detail.includes('生年四化'));
+assert(detail.includes('selectedTimeReading'));
+assert(!detail.includes('OFFLINE_TOPICS')&&!detail.includes('/api/interpret'));
+assert(report.includes('我的命盘解读')&&report.includes('<ReportFollowup'));
+assert(report.includes('WealthEvidencePanel'));
+assert(follow.includes("'/api/interpret'")&&follow.includes('matchOfflineTopic'));
+assert(!mobile.includes('mobile-palace-detail')&&mobile.includes('chart-palace-detail'));
+console.log('Palace-detail vs unique report, AI followups and mobile dedup passed');
